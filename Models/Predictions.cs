@@ -1,6 +1,6 @@
 ﻿using Microsoft.ML.Data;
 
-namespace Beepul.Afs.FraudDetection.ML.Models;
+namespace Beepul.Afs.FraudDetection.ML.Host.Models;
 
 public class AnomalyPrediction
 {

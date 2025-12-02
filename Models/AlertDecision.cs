@@ -1,4 +1,4 @@
-namespace Beepul.Afs.FraudDetection.ML.Models;
+namespace Beepul.Afs.FraudDetection.ML.Host.Models;
 
 /// <summary>
 /// Represents a decision about whether to send an alert and which fraud types to highlight

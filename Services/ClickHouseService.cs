@@ -1,10 +1,10 @@
 ﻿using ClickHouse.Client.ADO;
 using Dapper;
-using Beepul.Afs.FraudDetection.ML.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace Beepul.Afs.FraudDetection.ML.Services;
+namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
 public class ClickHouseService
 {

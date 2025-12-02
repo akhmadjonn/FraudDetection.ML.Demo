@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using Beepul.Afs.FraudDetection.ML.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Models;
 
-namespace Beepul.Afs.FraudDetection.ML.Services;
+namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
 /// <summary>
 /// Hybrid alert throttling service combining fast in-memory checks with optional database persistence.

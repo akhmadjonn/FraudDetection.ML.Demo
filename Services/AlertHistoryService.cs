@@ -1,8 +1,8 @@
 using ClickHouse.Client.ADO;
 using Dapper;
-using Beepul.Afs.FraudDetection.ML.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Models;
 
-namespace Beepul.Afs.FraudDetection.ML.Services;
+namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
 /// <summary>
 /// Manages alert history to prevent duplicate alerts and implement fraud-type-aware throttling.

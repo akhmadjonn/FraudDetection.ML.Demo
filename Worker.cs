@@ -1,4 +1,4 @@
-namespace Beepul.Afs.FraudDetection.ML
+namespace Beepul.Afs.FraudDetection.ML.Host.Host
 {
     public class Worker : BackgroundService
     {

@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/*.user
+**/node_modules
+**/wwwroot
+*.md
+.env
+.env.*
+docker/
+deploy/
+Docs/
+Scripts/
+.dockerignore

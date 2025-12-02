@@ -1,6 +1,6 @@
-﻿using Beepul.Afs.FraudDetection.ML.Services;
+﻿using Beepul.Afs.FraudDetection.ML.Host.Services;
 
-namespace Beepul.Afs.FraudDetection.ML.BackgroundJobs;
+namespace Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 
 public class DailyAnalysisJob : BackgroundService
 {

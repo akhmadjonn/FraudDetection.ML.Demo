@@ -1,8 +1,8 @@
 ﻿using Microsoft.ML;
 using Microsoft.ML.Data;
-using Beepul.Afs.FraudDetection.ML.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Models;
 
-namespace Beepul.Afs.FraudDetection.ML.Services;
+namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
 public class ClusteringService
 {

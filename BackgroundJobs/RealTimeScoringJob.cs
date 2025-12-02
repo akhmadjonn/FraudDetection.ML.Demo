@@ -1,7 +1,7 @@
-﻿using Beepul.Afs.FraudDetection.ML.Services;
-using Beepul.Afs.FraudDetection.ML.Models;
+﻿using Beepul.Afs.FraudDetection.ML.Host.Services;
+using Beepul.Afs.FraudDetection.ML.Host.Models;
 
-namespace Beepul.Afs.FraudDetection.ML.BackgroundJobs;
+namespace Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 
 public class RealTimeScoringJob : BackgroundService
 {

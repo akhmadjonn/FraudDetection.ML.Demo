@@ -1,5 +1,5 @@
-﻿using Beepul.Afs.FraudDetection.ML.Services;
-using Beepul.Afs.FraudDetection.ML.BackgroundJobs;
+﻿using Beepul.Afs.FraudDetection.ML.Host.Services;
+using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -8,7 +8,7 @@ var builder = Host.CreateApplicationBuilder(args);
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "Beepul.Afs.FraudDetection.ML")
+    .Enrich.WithProperty("Application", "Beepul.Afs.FraudDetection.ML.Host")
     .CreateLogger();
 
 builder.Services.AddSerilog();
