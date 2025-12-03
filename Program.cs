@@ -3,17 +3,25 @@ using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 using Beepul.Afs.FraudDetection.ML.Host.Extensions;
 using Beepul.Afs.FraudDetection.ML.Host.Middleware;
 using Serilog;
+using OpenTelemetry;
 
 // Detect run mode from command-line arguments
 var runMode = DetectRunMode(args);
 
-// Configure Serilog (common for all modes)
+// Build unified configuration (used by both Serilog and application)
+// This configuration is built ONCE and NOT reloaded during runtime
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true, reloadOnChange: false)
+    .AddJsonFile("/settings.json", optional: true, reloadOnChange: false)  // Docker secrets/config
+    .AddJsonFile("/run/secrets/secrets.json", optional: true, reloadOnChange: false)  // Docker secrets
+    .AddEnvironmentVariables()
+    .Build();
+
+// Configure Serilog using unified configuration
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(new ConfigurationBuilder()
-        .SetBasePath(Directory.GetCurrentDirectory())
-        .AddJsonFile("appsettings.json")
-        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
-        .Build())
+    .ReadFrom.Configuration(configuration)  // Use unified configuration
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "Beepul.Afs.FraudDetection.ML.Host")
     .Enrich.WithProperty("RunMode", runMode.ToString())
@@ -23,11 +31,11 @@ try
 {
     if (runMode == RunMode.WebApi)
     {
-        await RunWebApiAsync(args);
+        await RunWebApiAsync(args, configuration);
     }
     else if (runMode == RunMode.Background)
     {
-        await RunBackgroundAsync(args);
+        await RunBackgroundAsync(args, configuration);
     }
 }
 catch (Exception ex)
@@ -41,7 +49,7 @@ finally
 }
 
 // ==================== WEB API MODE ====================
-async Task RunWebApiAsync(string[] arguments)
+async Task RunWebApiAsync(string[] arguments, IConfiguration config)
 {
     Log.Information("═══════════════════════════════════════");
     Log.Information("Starting in WEB API Mode");
@@ -49,8 +57,19 @@ async Task RunWebApiAsync(string[] arguments)
 
     var builder = WebApplication.CreateBuilder(arguments);
 
+    // Use unified configuration (instead of default configuration)
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddConfiguration(config);
+
     // Configure Serilog
     builder.Host.UseSerilog();
+
+    // Add OpenTelemetry instrumentation
+    builder.Services.AddOpenTelemetry()
+        .WithTracing(providerBuilder =>
+        {
+            providerBuilder.AddEntityFrameworkCoreInstrumentation();
+        });
 
     // Register fraud detection services (shared)
     builder.Services.AddFraudDetectionServices();
@@ -105,7 +124,7 @@ async Task RunWebApiAsync(string[] arguments)
 }
 
 // ==================== BACKGROUND MODE ====================
-async Task RunBackgroundAsync(string[] arguments)
+async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
 {
     Log.Information("═══════════════════════════════════════");
     Log.Information("Starting in BACKGROUND Mode");
@@ -113,8 +132,19 @@ async Task RunBackgroundAsync(string[] arguments)
 
     var builder = Host.CreateApplicationBuilder(arguments);
 
+    // Use unified configuration (instead of default configuration)
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddConfiguration(config);
+
     // Configure Serilog
     builder.Services.AddSerilog();
+
+    // Add OpenTelemetry instrumentation
+    builder.Services.AddOpenTelemetry()
+        .WithTracing(providerBuilder =>
+        {
+            providerBuilder.AddEntityFrameworkCoreInstrumentation();
+        });
 
     // Register fraud detection services (shared)
     builder.Services.AddFraudDetectionServices();
