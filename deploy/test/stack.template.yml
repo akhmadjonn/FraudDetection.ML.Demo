@@ -1,0 +1,130 @@
+version: "3.7"
+
+services:
+  # ==================== WEB API SERVICE ====================
+  fraud-detection-api:
+    volumes:
+      - /opt/appdynamics/dotnet:/opt/appdynamics/dotnet
+      - fraud-detection-models:/app/Models
+    environment:
+      # AppDynamics monitoring
+      CORECLR_PROFILER: "${CORECLR_PROFILER}"
+      CORECLR_ENABLE_PROFILING: "${CORECLR_ENABLE_PROFILING}"
+      CORECLR_PROFILER_PATH: "${CORECLR_PROFILER_PATH}"
+      APPDYNAMICS_CONTROLLER_HOST_NAME: "${APPDYNAMICS_CONTROLLER_HOST_NAME}"
+      APPDYNAMICS_CONTROLLER_PORT: "${APPDYNAMICS_CONTROLLER_PORT}"
+      APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY: "${APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY}"
+      APPDYNAMICS_AGENT_ACCOUNT_NAME: "${APPDYNAMICS_AGENT_ACCOUNT_NAME}"
+      APPDYNAMICS_AGENT_APPLICATION_NAME: "${APPDYNAMICS_AGENT_APPLICATION_NAME}"
+      APPDYNAMICS_AGENT_REUSE_NODE_NAME: "true"
+      APPDYNAMICS_AGENT_TIER_NAME: "${APPDYNAMICS_AGENT_TIER_NAME}-api"
+      APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX: "${APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX}-api"
+      OTL_INSTANCE_ID: "${IMAGE_TAG}-api-{{.Task.Slot}}"
+      ASPNETCORE_ENVIRONMENT: "Testing"
+      ASPNETCORE_URLS: "http://+:80"
+    image: "nexus.beelab.uz:8082/beepul-afs/fraud-detection:${IMAGE_TAG}"
+    # No command - runs in Web API mode by default
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - beepul-afs-test
+      - publish-https
+    configs:
+      - source: fraud_detection_settings_test
+        target: /settings.json
+    secrets:
+      - source: fraud_detection_secrets_test
+        target: /run/secrets/secrets.json
+    deploy:
+      mode: replicated
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == worker
+      labels:
+        caddy: testdetection-service-dev.service-dev.afs.beelab.uz
+        caddy.reverse_proxy: "{{ upstreams 80 }}"
+        caddy.tls: "/run/secrets/server.crt /run/secrets/server.key"
+      resources:
+        limits:
+          memory: 512Mi
+          cpus: "0.5"
+        reservations:
+          memory: 256Mi
+          cpus: "0.25"
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # ==================== BACKGROUND SERVICE ====================
+  fraud-detection-background:
+    volumes:
+      - fraud-detection-models:/app/Models
+    environment:
+      OTL_INSTANCE_ID: "${IMAGE_TAG}-background-{{.Task.Slot}}"
+      ASPNETCORE_ENVIRONMENT: "Testing"
+    image: "nexus.beelab.uz:8082/beepul-afs/fraud-detection:${IMAGE_TAG}"
+    command: ["--hangfire"]
+    configs:
+      - source: fraud_detection_settings_test
+        target: /settings.json
+    secrets:
+      - source: fraud_detection_secrets_test
+        target: /run/secrets/secrets.json
+    networks:
+      - publish-https
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          memory: 768Mi
+          cpus: "1.0"
+        reservations:
+          memory: 512Mi
+          cpus: "0.5"
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+# ==================== VOLUMES ====================
+volumes:
+  fraud-detection-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /nfs/fraud-detection/models
+
+# ==================== NETWORKS ====================
+networks:
+  beepul-afs-test:
+    external: true
+  publish-https:
+    external: true
+
+# ==================== CONFIGS ====================
+configs:
+  fraud_detection_settings_test:
+    external: true
+    name: "fraud-detection-settings-test-${SETTINGS_VERSION}"
+
+# ==================== SECRETS ====================
+secrets:
+  fraud_detection_secrets_test:
+    external: true
+    name: "fraud-detection-secrets-test-${SECRETS_VERSION}"
