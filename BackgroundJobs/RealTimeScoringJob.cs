@@ -69,104 +69,174 @@ public class RealTimeScoringJob : BackgroundService
             return;
         }
 
-        // Get new sessions since last check
-        var newSessions = await clickHouse.GetRecentSessionsAsync(
-            _lastProcessedTime,
-            limit: _batchSize);
+        // Loop until all sessions are processed
+        int totalProcessed = 0;
+        int totalAlerts = 0;
+        int totalThrottled = 0;
+        int batchCount = 0;
+        const int MAX_BATCHES = 10;  // Safety limit to prevent infinite loops
 
-        if (!newSessions.Any())
+        while (batchCount < MAX_BATCHES)
         {
-            return;
-        }
+            batchCount++;
 
-        _logger.LogInformation("Processing {Count} new sessions (from {From} to {To})",
-            newSessions.Count,
-            newSessions.Min(s => s.CreatedAt),
-            newSessions.Max(s => s.CreatedAt));
+            // Get new sessions since last check
+            var newSessions = await clickHouse.GetRecentSessionsAsync(
+                _lastProcessedTime,
+                limit: _batchSize);
 
-        var processedCount = 0;
-        var alertCount = 0;
-        var throttledCount = 0;
-
-        foreach (var session in newSessions)
-        {
-            try
+            if (!newSessions.Any())
             {
-                // Extract features
-                var features = await featureService.ExtractFeaturesAsync(session);
-                if (features == null)
+                break;  // No more sessions to process
+            }
+
+            // Log warning if processing multiple batches
+            if (batchCount > 1)
+            {
+                _logger.LogWarning(
+                    "Processing batch {Batch} - High session volume detected ({Count} sessions)",
+                    batchCount,
+                    newSessions.Count);
+            }
+            else
+            {
+                _logger.LogInformation("Processing {Count} new sessions (from {From} to {To})",
+                    newSessions.Count,
+                    newSessions.Min(s => s.CreatedAt),
+                    newSessions.Max(s => s.CreatedAt));
+            }
+
+            var processedCount = 0;
+            var alertCount = 0;
+            var throttledCount = 0;
+
+            foreach (var session in newSessions)
+            {
+                try
                 {
-                    _logger.LogWarning("Failed to extract features for session {SessionId}", session.SessionId);
-                    continue;
+                    // Extract features
+                    var features = await featureService.ExtractFeaturesAsync(session);
+                    if (features == null)
+                    {
+                        _logger.LogWarning("Failed to extract features for session {SessionId}", session.SessionId);
+                        continue;
+                    }
+
+                    // Get predictions from both models
+                    var anomalyPrediction = isolationForest.Predict(features);
+                    var clusterPrediction = clustering.Predict(features);
+
+                    // Analyze results
+                    var result = analysisService.AnalyzeSession(
+                        features,
+                        anomalyPrediction,
+                        clusterPrediction);
+
+                    // ALWAYS save to database (regardless of alert status)
+                    await clickHouse.SaveAnalysisResultAsync(result);
+
+                    processedCount++;
+
+                    // Check for high-risk sessions and apply fraud-type-aware throttling
+                    if (result.RiskLevel is "CRITICAL" or "HIGH")
+                    {
+                        // Use hybrid service to determine if alert should be sent
+                        var decision = await hybridAlert.ShouldSendAlertAsync(result);
+
+                        if (decision.ShouldSend)
+                        {
+                            // Send alert highlighting NEW fraud types
+                            await notification.SendAlertAsync(result, decision.FraudTypesToAlert);
+
+                            alertCount++;
+
+                            _logger.LogWarning(
+                                "🚨 {RiskLevel} alert sent! Session: {SessionId}, User: {Phone}, Score: {Score:F2}, NEW Fraud Types: {FraudTypes}, Reason: {Reason}",
+                                result.RiskLevel,
+                                result.SessionId,
+                                result.PhoneNumber,
+                                result.AnomalyScore,
+                                string.Join(", ", decision.FraudTypesToAlert),
+                                decision.Reason);
+                        }
+                        else
+                        {
+                            // All fraud types already alerted on - throttled
+                            throttledCount++;
+
+                            _logger.LogDebug(
+                                "⏸️ Alert throttled for session {SessionId}. Reason: {Reason}. Detected: {All}, Throttled: {Throttled}",
+                                result.SessionId,
+                                decision.Reason,
+                                string.Join(", ", decision.AllDetectedFraudTypes),
+                                string.Join(", ", decision.ThrottledFraudTypes));
+                        }
+                    }
                 }
-
-                // Get predictions from both models
-                var anomalyPrediction = isolationForest.Predict(features);
-                var clusterPrediction = clustering.Predict(features);
-
-                // Analyze results
-                var result = analysisService.AnalyzeSession(
-                    features,
-                    anomalyPrediction,
-                    clusterPrediction);
-
-                // ALWAYS save to database (regardless of alert status)
-                await clickHouse.SaveAnalysisResultAsync(result);
-
-                processedCount++;
-
-                // Check for high-risk sessions and apply fraud-type-aware throttling
-                if (result.RiskLevel is "CRITICAL" or "HIGH")
+                catch (Exception ex)
                 {
-                    // Use hybrid service to determine if alert should be sent
-                    var decision = await hybridAlert.ShouldSendAlertAsync(result);
-
-                    if (decision.ShouldSend)
-                    {
-                        // Send alert highlighting NEW fraud types
-                        await notification.SendAlertAsync(result, decision.FraudTypesToAlert);
-
-                        alertCount++;
-
-                        _logger.LogWarning(
-                            "🚨 {RiskLevel} alert sent! Session: {SessionId}, User: {Phone}, Score: {Score:F2}, NEW Fraud Types: {FraudTypes}, Reason: {Reason}",
-                            result.RiskLevel,
-                            result.SessionId,
-                            result.PhoneNumber,
-                            result.AnomalyScore,
-                            string.Join(", ", decision.FraudTypesToAlert),
-                            decision.Reason);
-                    }
-                    else
-                    {
-                        // All fraud types already alerted on - throttled
-                        throttledCount++;
-
-                        _logger.LogDebug(
-                            "⏸️ Alert throttled for session {SessionId}. Reason: {Reason}. Detected: {All}, Throttled: {Throttled}",
-                            result.SessionId,
-                            decision.Reason,
-                            string.Join(", ", decision.AllDetectedFraudTypes),
-                            string.Join(", ", decision.ThrottledFraudTypes));
-                    }
+                    _logger.LogError(ex, "Error processing session {SessionId}", session.SessionId);
                 }
             }
-            catch (Exception ex)
+
+            // Update totals
+            totalProcessed += processedCount;
+            totalAlerts += alertCount;
+            totalThrottled += throttledCount;
+
+            // Update checkpoint
+            _lastProcessedTime = newSessions.Max(s => s.CreatedAt);
+
+            // Log batch summary
+            if (batchCount > 1)
             {
-                _logger.LogError(ex, "Error processing session {SessionId}", session.SessionId);
+                _logger.LogInformation(
+                    "Batch {Batch} complete: Processed {Processed}/{Total}, Alerts: {Alerts}, Throttled: {Throttled}",
+                    batchCount,
+                    processedCount,
+                    newSessions.Count,
+                    alertCount,
+                    throttledCount);
+            }
+
+            // If we processed less than batch size, we're done
+            if (newSessions.Count < _batchSize)
+            {
+                break;
+            }
+
+            // Small delay between batches to avoid hammering the database
+            await Task.Delay(50);
+        }
+
+        // Log warning if hit maximum batch limit
+        if (batchCount >= MAX_BATCHES)
+        {
+            _logger.LogCritical(
+                "⚠️ Hit maximum batch limit ({Max} batches)! May be falling behind on session processing. Consider increasing batch size or decreasing check interval.",
+                MAX_BATCHES);
+        }
+
+        // Log final summary
+        if (totalProcessed > 0)
+        {
+            if (batchCount == 1)
+            {
+                _logger.LogInformation(
+                    "Processed {Processed} sessions. Alerts sent: {Alerts}, Throttled: {Throttled}",
+                    totalProcessed,
+                    totalAlerts,
+                    totalThrottled);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "✅ Completed processing {Total} sessions in {Batches} batches. Alerts sent: {Alerts}, Throttled: {Throttled}",
+                    totalProcessed,
+                    batchCount,
+                    totalAlerts,
+                    totalThrottled);
             }
         }
-
-        if (processedCount > 0)
-        {
-            _logger.LogInformation(
-                "Processed {Processed}/{Total} sessions. Alerts sent: {Alerts}, Throttled: {Throttled}",
-                processedCount,
-                newSessions.Count,
-                alertCount,
-                throttledCount);
-        }
-
-        _lastProcessedTime = newSessions.Max(s => s.CreatedAt);
     }
 }

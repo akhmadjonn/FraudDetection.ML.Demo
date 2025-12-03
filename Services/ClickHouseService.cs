@@ -28,13 +28,13 @@ public class ClickHouseService
         await connection.OpenAsync();
 
         var query = @"
-            SELECT 
+            SELECT
                 Id, SessionId, GlobalId, GlobalDeviceId,
                 DeviceContext, Type, CreatedAt, ExpireAt,
                 DeviceKey, AppSetId, MetaData, ProfileId
             FROM Sessions
             WHERE CreatedAt >= @FromDate
-            ORDER BY CreatedAt DESC
+            ORDER BY CreatedAt ASC
             LIMIT @Limit";
 
         var sessions = await connection.QueryAsync<SessionRecord>(
