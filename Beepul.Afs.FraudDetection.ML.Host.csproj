@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,15 +8,28 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Core Dependencies -->
 	  <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+
+	  <!-- ML.NET Dependencies -->
 	  <PackageReference Include="Microsoft.ML" Version="3.0.1" />
 	  <PackageReference Include="Microsoft.ML.AutoML" Version="0.21.1" />
+
+	  <!-- Database Dependencies -->
 	  <PackageReference Include="ClickHouse.Client" Version="6.8.0" />
 	  <PackageReference Include="Dapper" Version="2.1.28" />
+
+	  <!-- Logging Dependencies -->
 	  <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
 	  <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
 	  <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
 	  <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.0" />
+	  <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+
+	  <!-- Web API Dependencies -->
+	  <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+	  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+	  <PackageReference Include="Microsoft.AspNetCore.Authentication" Version="2.2.0" />
 
   </ItemGroup>
 </Project>

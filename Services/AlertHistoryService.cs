@@ -46,12 +46,11 @@ public class AlertHistoryService
                 PhoneNumber String,
                 RiskLevel String,
                 FraudTypes Array(String),
-                SentAt DateTime,
+                CreatedAt DateTime64(3, 'Asia/Tashkent') DEFAULT now(),
                 ThrottleKey String
             )
             ENGINE = MergeTree()
-            ORDER BY (SentAt, DeviceKey, UserId)
-            TTL SentAt + INTERVAL 30 DAY";
+            ORDER BY (CreatedAt, DeviceKey, UserId)";
 
         await connection.ExecuteAsync(createTableQuery);
         _logger.LogInformation("AlertHistory table initialized");
@@ -88,7 +87,7 @@ public class AlertHistoryService
                 SELECT COUNT(*) as AlertCount
                 FROM AlertHistory
                 WHERE ThrottleKey = @ThrottleKey
-                  AND SentAt >= @CutoffTime
+                  AND CreatedAt >= @CutoffTime
                 LIMIT 1";
 
             var count = await connection.ExecuteScalarAsync<int>(
@@ -130,7 +129,6 @@ public class AlertHistoryService
         await connection.OpenAsync();
 
         var alertId = Guid.NewGuid().ToString();
-        var sentAt = DateTime.UtcNow;
 
         // Record an entry for each fraud type separately
         foreach (var fraudType in fraudTypes)
@@ -138,9 +136,8 @@ public class AlertHistoryService
             var throttleKey = BuildThrottleKey(result, fraudType);
 
             var insertQuery = @"
-                INSERT INTO AlertHistory VALUES
-                (@AlertId, @SessionId, @DeviceKey, @GlobalDeviceId, @UserId, @PhoneNumber,
-                 @RiskLevel, @FraudTypes, @SentAt, @ThrottleKey)";
+                INSERT INTO AlertHistory (AlertId, SessionId, DeviceKey, GlobalDeviceId, UserId, PhoneNumber, RiskLevel, FraudTypes, ThrottleKey)
+                VALUES (@AlertId, @SessionId, @DeviceKey, @GlobalDeviceId, @UserId, @PhoneNumber, @RiskLevel, @FraudTypes, @ThrottleKey)";
 
             await connection.ExecuteAsync(insertQuery, new
             {
@@ -152,15 +149,13 @@ public class AlertHistoryService
                 result.PhoneNumber,
                 result.RiskLevel,
                 FraudTypes = new[] { fraudType },
-                SentAt = sentAt,
                 ThrottleKey = throttleKey
             });
 
             _logger.LogInformation(
-                "✅ Alert recorded: {FraudType} for {Entity} at {Time}",
+                "✅ Alert recorded: {FraudType} for {Entity}",
                 fraudType,
-                result.UserId ?? result.DeviceKey,
-                sentAt);
+                result.UserId ?? result.DeviceKey);
         }
     }
 
@@ -216,7 +211,7 @@ public class AlertHistoryService
                 countIf(arrayExists(x -> x = 'AccountTakeover', FraudTypes)) as AccountTakeoverAlerts,
                 countIf(arrayExists(x -> x = 'ImpossibleTravel', FraudTypes)) as ImpossibleTravelAlerts
             FROM AlertHistory
-            WHERE SentAt >= @FromDate";
+            WHERE CreatedAt >= @FromDate";
 
         var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
             query,
@@ -252,11 +247,11 @@ public class AlertHistoryService
                 DeviceKey,
                 UserId,
                 RiskLevel,
-                SentAt,
+                CreatedAt,
                 ThrottleKey
             FROM AlertHistory
-            WHERE SentAt >= @CutoffTime
-            ORDER BY SentAt DESC";
+            WHERE CreatedAt >= @CutoffTime
+            ORDER BY CreatedAt DESC";
 
         var results = await connection.QueryAsync<dynamic>(
             query,
@@ -268,7 +263,7 @@ public class AlertHistoryService
             DeviceKey = r.DeviceKey,
             UserId = r.UserId ?? string.Empty,
             RiskLevel = r.RiskLevel,
-            SentAt = r.SentAt,
+            CreatedAt = r.CreatedAt,
             ThrottleKey = r.ThrottleKey,
             // Extract fraud type from throttle key (format: "device:xyz:CRITICAL:FraudType")
             FraudType = ExtractFraudTypeFromThrottleKey(r.ThrottleKey)
@@ -302,7 +297,7 @@ public class AlertWarmupEntry
     public string UserId { get; set; } = string.Empty;
     public string RiskLevel { get; set; } = string.Empty;
     public string FraudType { get; set; } = string.Empty;
-    public DateTime SentAt { get; set; }
+    public DateTime CreatedAt { get; set; }
     public string ThrottleKey { get; set; } = string.Empty;
 }
 

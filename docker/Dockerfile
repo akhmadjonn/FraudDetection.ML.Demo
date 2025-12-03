@@ -32,10 +32,17 @@ COPY --from=publish /app/publish .
 
 # Set environment variables
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
-    ASPNETCORE_ENVIRONMENT=Production
+    ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_URLS=http://+:80
+
+# Expose port for Web API mode
+EXPOSE 80
 
 # Run as non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app /var/log/frauddetection
 USER appuser
 
+# ENTRYPOINT supports multiple run modes:
+# - Web API mode (default): docker run <image>
+# - Background mode: docker run <image> --hangfire
 ENTRYPOINT ["dotnet", "Beepul.Afs.FraudDetection.ML.Host.dll"]

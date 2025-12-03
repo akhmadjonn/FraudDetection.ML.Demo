@@ -28,18 +28,40 @@ public class ClickHouseService
         await connection.OpenAsync();
 
         var query = @"
-            SELECT 
+            SELECT
                 Id, SessionId, GlobalId, GlobalDeviceId,
                 DeviceContext, Type, CreatedAt, ExpireAt,
                 DeviceKey, AppSetId, MetaData, ProfileId
             FROM Sessions
             WHERE CreatedAt >= @FromDate
-            ORDER BY CreatedAt DESC
+            ORDER BY CreatedAt ASC
             LIMIT @Limit";
 
         var sessions = await connection.QueryAsync<SessionRecord>(
             query,
             new { FromDate = fromDate, Limit = limit });
+
+        return sessions.ToList();
+    }
+
+    public async Task<List<SessionRecord>> GetSessionsByIdAsync(string sessionId)
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = @"
+            SELECT
+                Id, SessionId, GlobalId, GlobalDeviceId,
+                DeviceContext, Type, CreatedAt, ExpireAt,
+                DeviceKey, AppSetId, MetaData, ProfileId
+            FROM Sessions
+            WHERE SessionId = @SessionId
+            ORDER BY CreatedAt DESC
+            LIMIT 1";
+
+        var sessions = await connection.QueryAsync<SessionRecord>(
+            query,
+            new { SessionId = sessionId });
 
         return sessions.ToList();
     }
@@ -472,7 +494,7 @@ public class ClickHouseService
         await connection.OpenAsync();
 
         var query = @"
-            SELECT 
+            SELECT
                 SessionId, ProfileId, DeviceKey, GlobalDeviceId, UserId, PhoneNumber,
                 AnalyzedAt, AnomalyScore, IsAnomaly, ClusterId, RiskLevel,
                 IsMultiAccounting, IsMultiDevicing, IsAccountTakeover, IsImpossibleTravel,
@@ -489,6 +511,126 @@ public class ClickHouseService
             ProfileId = !string.IsNullOrEmpty(r.ProfileId) ? Guid.Parse(r.ProfileId) : (Guid?)null,  // Convert string to Guid?
             DeviceKey = r.DeviceKey,
             GlobalDeviceId = Guid.Parse(r.GlobalDeviceId),  // Convert string to Guid
+            UserId = r.UserId,
+            PhoneNumber = r.PhoneNumber,
+            AnalyzedAt = r.AnalyzedAt,
+            AnomalyScore = r.AnomalyScore,
+            IsAnomaly = r.IsAnomaly == 1,
+            ClusterId = r.ClusterId,
+            RiskLevel = r.RiskLevel,
+            IsMultiAccounting = r.IsMultiAccounting == 1,
+            IsMultiDevicing = r.IsMultiDevicing == 1,
+            IsAccountTakeover = r.IsAccountTakeover == 1,
+            IsImpossibleTravel = r.IsImpossibleTravel == 1,
+            SuspiciousReasons = ((string[])r.SuspiciousReasons).ToList(),
+            Features = JsonSerializer.Deserialize<FraudFeatures>(r.Features) ?? new FraudFeatures()
+        }).ToList();
+    }
+
+    public async Task<List<FraudAnalysisResult>> GetAnalysisResultBySessionIdAsync(string sessionId)
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = @"
+            SELECT
+                SessionId, ProfileId, DeviceKey, GlobalDeviceId, UserId, PhoneNumber,
+                AnalyzedAt, AnomalyScore, IsAnomaly, ClusterId, RiskLevel,
+                IsMultiAccounting, IsMultiDevicing, IsAccountTakeover, IsImpossibleTravel,
+                SuspiciousReasons, Features
+            FROM FraudAnalysisResults
+            WHERE SessionId = @SessionId
+            ORDER BY AnalyzedAt DESC
+            LIMIT 1";
+
+        var results = await connection.QueryAsync<dynamic>(query, new { SessionId = sessionId });
+
+        return results.Select(r => new FraudAnalysisResult
+        {
+            SessionId = r.SessionId,
+            ProfileId = !string.IsNullOrEmpty(r.ProfileId) ? Guid.Parse(r.ProfileId) : (Guid?)null,
+            DeviceKey = r.DeviceKey,
+            GlobalDeviceId = Guid.Parse(r.GlobalDeviceId),
+            UserId = r.UserId,
+            PhoneNumber = r.PhoneNumber,
+            AnalyzedAt = r.AnalyzedAt,
+            AnomalyScore = r.AnomalyScore,
+            IsAnomaly = r.IsAnomaly == 1,
+            ClusterId = r.ClusterId,
+            RiskLevel = r.RiskLevel,
+            IsMultiAccounting = r.IsMultiAccounting == 1,
+            IsMultiDevicing = r.IsMultiDevicing == 1,
+            IsAccountTakeover = r.IsAccountTakeover == 1,
+            IsImpossibleTravel = r.IsImpossibleTravel == 1,
+            SuspiciousReasons = ((string[])r.SuspiciousReasons).ToList(),
+            Features = JsonSerializer.Deserialize<FraudFeatures>(r.Features) ?? new FraudFeatures()
+        }).ToList();
+    }
+
+    public async Task<List<FraudAnalysisResult>> GetUserFraudHistoryAsync(string userId, int limit = 10)
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = @"
+            SELECT
+                SessionId, ProfileId, DeviceKey, GlobalDeviceId, UserId, PhoneNumber,
+                AnalyzedAt, AnomalyScore, IsAnomaly, ClusterId, RiskLevel,
+                IsMultiAccounting, IsMultiDevicing, IsAccountTakeover, IsImpossibleTravel,
+                SuspiciousReasons, Features
+            FROM FraudAnalysisResults
+            WHERE UserId = @UserId
+            ORDER BY AnalyzedAt DESC
+            LIMIT @Limit";
+
+        var results = await connection.QueryAsync<dynamic>(query, new { UserId = userId, Limit = limit });
+
+        return results.Select(r => new FraudAnalysisResult
+        {
+            SessionId = r.SessionId,
+            ProfileId = !string.IsNullOrEmpty(r.ProfileId) ? Guid.Parse(r.ProfileId) : (Guid?)null,
+            DeviceKey = r.DeviceKey,
+            GlobalDeviceId = Guid.Parse(r.GlobalDeviceId),
+            UserId = r.UserId,
+            PhoneNumber = r.PhoneNumber,
+            AnalyzedAt = r.AnalyzedAt,
+            AnomalyScore = r.AnomalyScore,
+            IsAnomaly = r.IsAnomaly == 1,
+            ClusterId = r.ClusterId,
+            RiskLevel = r.RiskLevel,
+            IsMultiAccounting = r.IsMultiAccounting == 1,
+            IsMultiDevicing = r.IsMultiDevicing == 1,
+            IsAccountTakeover = r.IsAccountTakeover == 1,
+            IsImpossibleTravel = r.IsImpossibleTravel == 1,
+            SuspiciousReasons = ((string[])r.SuspiciousReasons).ToList(),
+            Features = JsonSerializer.Deserialize<FraudFeatures>(r.Features) ?? new FraudFeatures()
+        }).ToList();
+    }
+
+    public async Task<List<FraudAnalysisResult>> GetDeviceFraudHistoryAsync(string deviceKey, int limit = 10)
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = @"
+            SELECT
+                SessionId, ProfileId, DeviceKey, GlobalDeviceId, UserId, PhoneNumber,
+                AnalyzedAt, AnomalyScore, IsAnomaly, ClusterId, RiskLevel,
+                IsMultiAccounting, IsMultiDevicing, IsAccountTakeover, IsImpossibleTravel,
+                SuspiciousReasons, Features
+            FROM FraudAnalysisResults
+            WHERE DeviceKey = @DeviceKey
+            ORDER BY AnalyzedAt DESC
+            LIMIT @Limit";
+
+        var results = await connection.QueryAsync<dynamic>(query, new { DeviceKey = deviceKey, Limit = limit });
+
+        return results.Select(r => new FraudAnalysisResult
+        {
+            SessionId = r.SessionId,
+            ProfileId = !string.IsNullOrEmpty(r.ProfileId) ? Guid.Parse(r.ProfileId) : (Guid?)null,
+            DeviceKey = r.DeviceKey,
+            GlobalDeviceId = Guid.Parse(r.GlobalDeviceId),
             UserId = r.UserId,
             PhoneNumber = r.PhoneNumber,
             AnalyzedAt = r.AnalyzedAt,

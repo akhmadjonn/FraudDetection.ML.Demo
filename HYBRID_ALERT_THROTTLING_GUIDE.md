@@ -333,12 +333,11 @@ CREATE TABLE AlertHistory
     PhoneNumber String,          -- User phone
     RiskLevel String,            -- CRITICAL/HIGH
     FraudTypes Array(String),    -- Fraud types in this alert
-    SentAt DateTime,             -- When alert was sent
+    CreatedAt DateTime64(3, 'Asia/Tashkent') DEFAULT now(),  -- When alert was created
     ThrottleKey String           -- Throttle cache key
 )
 ENGINE = MergeTree()
-ORDER BY (SentAt, DeviceKey, UserId)
-TTL SentAt + INTERVAL 30 DAY   -- Auto-cleanup
+ORDER BY (CreatedAt, DeviceKey, UserId)
 ```
 
 ---
