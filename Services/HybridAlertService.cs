@@ -59,7 +59,7 @@ public class HybridAlertService
                     var key = BuildThrottleKey(alert.DeviceKey, alert.RiskLevel, alert.FraudType);
                     _throttleCache[key] = new ThrottleEntry
                     {
-                        LastAlertTime = alert.SentAt,
+                        LastAlertTime = alert.CreatedAt,
                         SessionId = alert.SessionId,
                         FraudType = alert.FraudType,
                         RiskLevel = alert.RiskLevel,
