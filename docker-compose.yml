@@ -1,0 +1,121 @@
+version: "3.7"
+
+services:
+  # ==================== WEB API SERVICE ====================
+  # Handles real-time fraud detection API requests
+  fraud-detection-api:
+    volumes:
+      - /opt/appdynamics/dotnet:/opt/appdynamics/dotnet
+      - fraud-detection-models:/app/Models  # Shared model storage
+    environment:
+      # AppDynamics monitoring
+      CORECLR_PROFILER: "${CORECLR_PROFILER}"
+      CORECLR_ENABLE_PROFILING: "${CORECLR_ENABLE_PROFILING}"
+      CORECLR_PROFILER_PATH: "${CORECLR_PROFILER_PATH}"
+      APPDYNAMICS_CONTROLLER_HOST_NAME: "${APPDYNAMICS_CONTROLLER_HOST_NAME}"
+      APPDYNAMICS_CONTROLLER_PORT: "${APPDYNAMICS_CONTROLLER_PORT}"
+      APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY: "${APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY}"
+      APPDYNAMICS_AGENT_ACCOUNT_NAME: "${APPDYNAMICS_AGENT_ACCOUNT_NAME}"
+      APPDYNAMICS_AGENT_APPLICATION_NAME: "${APPDYNAMICS_AGENT_APPLICATION_NAME}"
+      APPDYNAMICS_AGENT_REUSE_NODE_NAME: "true"
+      APPDYNAMICS_AGENT_TIER_NAME: "${APPDYNAMICS_AGENT_TIER_NAME}-api"
+      APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX: "${APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX}-api"
+      OTL_INSTANCE_ID: "${IMAGE_TAG}-api-{{.Task.Slot}}"
+      ASPNETCORE_ENVIRONMENT: "Testing"
+      ASPNETCORE_URLS: "http://+:80"
+    image: "nexus.beelab.uz:8082/beepul-afs/fraud-detection:${IMAGE_TAG}"
+    # No command specified - runs in Web API mode by default
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - beepul-afs-test
+      - publish-https
+    configs:
+      - source: settings_source
+        target: "/settings.json"
+    secrets:
+      - source: secrets_source
+        target: secrets.json
+    deploy:
+      mode: replicated
+      replicas: 2  # Can scale horizontally for high availability
+      placement:
+        constraints:
+          - node.role == worker
+      labels:
+        caddy: testdetection-service-dev.service-dev.afs.beelab.uz
+        caddy.reverse_proxy: "{{ upstreams 80 }}"
+        caddy.tls: "/run/secrets/server.crt /run/secrets/server.key"
+      resources:
+        limits:
+          memory: 512Mi
+          cpus: "0.5"
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+
+  # ==================== BACKGROUND SERVICE ====================
+  # Handles model training, batch scoring, and daily reports
+  fraud-detection-background:
+    volumes:
+      - fraud-detection-models:/app/Models  # Shared model storage
+    environment:
+      OTL_INSTANCE_ID: "${IMAGE_TAG}-background-{{.Task.Slot}}"
+      ASPNETCORE_ENVIRONMENT: "Testing"
+    image: "nexus.beelab.uz:8082/beepul-afs/fraud-detection:${IMAGE_TAG}"
+    command: ["--hangfire"]  # Runs in Background mode
+    configs:
+      - source: settings_source
+        target: "/settings.json"
+    secrets:
+      - source: secrets_source
+        target: secrets.json
+    networks:
+      - publish-https
+    deploy:
+      mode: replicated
+      replicas: 1  # Only one instance for background jobs
+      placement:
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          memory: 768Mi  # More memory for ML training
+          cpus: "1.0"    # More CPU for ML training
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+# ==================== VOLUMES ====================
+volumes:
+  fraud-detection-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /nfs/fraud-detection/models  # Shared NFS volume for models
+
+# ==================== NETWORKS ====================
+networks:
+  beepul-afs-test:
+    external: true
+  publish-https:
+    external: true
+
+# ==================== CONFIGS ====================
+configs:
+  settings_source:
+    external: true
+    name: "${SETTINGS_NAME}"
+
+# ==================== SECRETS ====================
+secrets:
+  secrets_source:
+    external: true
+    name: "${SECRETS_NAME}"
