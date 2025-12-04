@@ -3,6 +3,8 @@ using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 using Beepul.Afs.FraudDetection.ML.Host.Extensions;
 using Beepul.Afs.FraudDetection.ML.Host.Middleware;
 using Serilog;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 // Detect run mode from command-line arguments
 var runMode = DetectRunMode(args);
@@ -62,6 +64,32 @@ async Task RunWebApiAsync(string[] arguments, IConfiguration config)
 
     // Configure Serilog
     builder.Host.UseSerilog();
+
+    // Configure OpenTelemetry
+    var serviceName = config["OpenTelemetry:ServiceName"] ?? "fraud-detection-ml";
+    var serviceNamespace = config["OpenTelemetry:ServiceNamespace"] ?? "beepul.afs";
+    var collectorUrl = config["OpenTelemetry:CollectorUrl"];
+
+    if (!string.IsNullOrEmpty(collectorUrl))
+    {
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource
+                .AddService(serviceName: serviceName, serviceNamespace: serviceNamespace))
+            .WithTracing(tracing => tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(collectorUrl);
+                }));
+
+        Log.Information("OpenTelemetry configured: Service={ServiceName}, Namespace={Namespace}, Collector={Collector}",
+            serviceName, serviceNamespace, collectorUrl);
+    }
+    else
+    {
+        Log.Information("OpenTelemetry collector URL not configured, skipping telemetry setup");
+    }
 
     // Register fraud detection services (shared)
     builder.Services.AddFraudDetectionServices();
@@ -130,6 +158,31 @@ async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
 
     // Configure Serilog
     builder.Services.AddSerilog();
+
+    // Configure OpenTelemetry
+    var serviceName = config["OpenTelemetry:ServiceName"] ?? "fraud-detection-ml";
+    var serviceNamespace = config["OpenTelemetry:ServiceNamespace"] ?? "beepul.afs";
+    var collectorUrl = config["OpenTelemetry:CollectorUrl"];
+
+    if (!string.IsNullOrEmpty(collectorUrl))
+    {
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource
+                .AddService(serviceName: serviceName, serviceNamespace: serviceNamespace))
+            .WithTracing(tracing => tracing
+                .AddHttpClientInstrumentation()
+                .AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(collectorUrl);
+                }));
+
+        Log.Information("OpenTelemetry configured: Service={ServiceName}, Namespace={Namespace}, Collector={Collector}",
+            serviceName, serviceNamespace, collectorUrl);
+    }
+    else
+    {
+        Log.Information("OpenTelemetry collector URL not configured, skipping telemetry setup");
+    }
 
     // Register fraud detection services (shared)
     builder.Services.AddFraudDetectionServices();
