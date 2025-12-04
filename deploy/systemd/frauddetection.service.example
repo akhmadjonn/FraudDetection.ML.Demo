@@ -1,0 +1,30 @@
+[Unit]
+Description=Fraud Detection ML Service
+After=network.target
+
+[Service]
+Type=notify
+User=frauddetection
+Group=frauddetection
+WorkingDirectory=/opt/frauddetection
+ExecStart=/usr/bin/dotnet /opt/frauddetection/Beepul.Afs.FraudDetection.ML.Host.dll
+Restart=always
+RestartSec=10
+
+# Load environment variables from secure file
+EnvironmentFile=/etc/frauddetection/secrets.env
+
+# Standard output and error logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=frauddetection
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/frauddetection /opt/frauddetection/Models
+
+[Install]
+WantedBy=multi-user.target

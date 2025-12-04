@@ -379,6 +379,11 @@ secrets.json
 .env.local
 .env.development
 .env.production
+secrets.env
+
+# Docker files with secrets
+docker-compose.yml
+docker-compose.override.yml
 
 # ML Models (can be large and might contain training data)
 Models/*.zip
