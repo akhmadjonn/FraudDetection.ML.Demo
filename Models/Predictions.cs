@@ -45,6 +45,10 @@ public class FraudAnalysisResult
     // Reasons
     public List<string> SuspiciousReasons { get; set; } = new();
 
+    // Alert Information (used by API responses)
+    public bool AlertSent { get; set; }
+    public List<string> FraudTypesAlerted { get; set; } = new();
+
     // Features for reference
     public FraudFeatures Features { get; set; } = new();
 }

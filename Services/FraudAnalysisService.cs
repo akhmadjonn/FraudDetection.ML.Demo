@@ -1,4 +1,5 @@
 using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
@@ -113,6 +114,10 @@ public class FraudAnalysisService : IFraudAnalysisService
             }
         }
 
+        // Set alert information
+        analysisResult.AlertSent = alertSent;
+        analysisResult.FraudTypesAlerted = fraudTypesAlerted;
+
         _logger.LogInformation(
             "Session analyzed: {SessionId}, Risk: {RiskLevel}, Score: {Score:F2}, Alert: {Alert}",
             analysisResult.SessionId,
@@ -120,79 +125,25 @@ public class FraudAnalysisService : IFraudAnalysisService
             analysisResult.AnomalyScore,
             alertSent);
 
-        // Return result with alert information
-        return new FraudAnalysisResult
-        {
-            SessionId = analysisResult.SessionId,
-            UserId = analysisResult.UserId,
-            PhoneNumber = analysisResult.PhoneNumber,
-            DeviceKey = analysisResult.DeviceKey,
-            AnalyzedAt = analysisResult.AnalyzedAt,
-            RiskLevel = analysisResult.RiskLevel,
-            AnomalyScore = analysisResult.AnomalyScore,
-            IsAnomaly = analysisResult.IsAnomaly,
-            ClusterId = analysisResult.ClusterId,
-            IsMultiAccounting = analysisResult.IsMultiAccounting,
-            IsMultiDevicing = analysisResult.IsMultiDevicing,
-            IsAccountTakeover = analysisResult.IsAccountTakeover,
-            IsImpossibleTravel = analysisResult.IsImpossibleTravel,
-            SuspiciousReasons = analysisResult.SuspiciousReasons,
-            AlertSent = alertSent,
-            FraudTypesAlerted = fraudTypesAlerted
-        };
+        return analysisResult;
     }
 
     /// <inheritdoc />
     public async Task<FraudAnalysisResult?> GetSessionAnalysisAsync(string sessionId)
     {
         var results = await _clickHouse.GetAnalysisResultBySessionIdAsync(sessionId);
-        var result = results.FirstOrDefault();
-
-        if (result == null)
-        {
-            return null;
-        }
-
-        return MapToFraudAnalysisResult(result, alertSent: false);
+        return results.FirstOrDefault();
     }
 
     /// <inheritdoc />
     public async Task<List<FraudAnalysisResult>> GetUserHistoryAsync(string userId, int limit)
     {
-        var results = await _clickHouse.GetUserFraudHistoryAsync(userId, limit);
-        return results.Select(r => MapToFraudAnalysisResult(r, alertSent: false)).ToList();
+        return await _clickHouse.GetUserFraudHistoryAsync(userId, limit);
     }
 
     /// <inheritdoc />
     public async Task<List<FraudAnalysisResult>> GetDeviceHistoryAsync(string deviceKey, int limit)
     {
-        var results = await _clickHouse.GetDeviceFraudHistoryAsync(deviceKey, limit);
-        return results.Select(r => MapToFraudAnalysisResult(r, alertSent: false)).ToList();
-    }
-
-    /// <summary>
-    /// Maps AnomalyAnalysisResult to FraudAnalysisResult
-    /// </summary>
-    private static FraudAnalysisResult MapToFraudAnalysisResult(AnomalyAnalysisResult result, bool alertSent)
-    {
-        return new FraudAnalysisResult
-        {
-            SessionId = result.SessionId,
-            UserId = result.UserId,
-            PhoneNumber = result.PhoneNumber,
-            DeviceKey = result.DeviceKey,
-            AnalyzedAt = result.AnalyzedAt,
-            RiskLevel = result.RiskLevel,
-            AnomalyScore = result.AnomalyScore,
-            IsAnomaly = result.IsAnomaly,
-            ClusterId = result.ClusterId,
-            IsMultiAccounting = result.IsMultiAccounting,
-            IsMultiDevicing = result.IsMultiDevicing,
-            IsAccountTakeover = result.IsAccountTakeover,
-            IsImpossibleTravel = result.IsImpossibleTravel,
-            SuspiciousReasons = result.SuspiciousReasons,
-            AlertSent = alertSent,
-            FraudTypesAlerted = new()
-        };
+        return await _clickHouse.GetDeviceFraudHistoryAsync(deviceKey, limit);
     }
 }

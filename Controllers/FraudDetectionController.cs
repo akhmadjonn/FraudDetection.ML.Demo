@@ -238,7 +238,7 @@ public record FraudAnalysisResponse
     public string RiskLevel { get; init; } = string.Empty;
     public float AnomalyScore { get; init; }
     public bool IsAnomaly { get; init; }
-    public int ClusterId { get; init; }
+    public uint ClusterId { get; init; }
     public bool IsMultiAccounting { get; init; }
     public bool IsMultiDevicing { get; init; }
     public bool IsAccountTakeover { get; init; }

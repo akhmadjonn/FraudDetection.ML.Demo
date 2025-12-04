@@ -1,21 +1,19 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Beepul.Afs.FraudDetection.ML.Host.Services;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.Extensions;
 
 public class FraudDetectionHealthCheck : IHealthCheck
 {
-    private readonly IsolationForestService _isolationForest;
-    private readonly ClusteringService _clustering;
+    private readonly IFraudAnalysisService _fraudAnalysisService;
     private readonly ILogger<FraudDetectionHealthCheck> _logger;
 
     public FraudDetectionHealthCheck(
-        IsolationForestService isolationForest,
-        ClusteringService clustering,
+        IFraudAnalysisService fraudAnalysisService,
         ILogger<FraudDetectionHealthCheck> logger)
     {
-        _isolationForest = isolationForest;
-        _clustering = clustering;
+        _fraudAnalysisService = fraudAnalysisService;
         _logger = logger;
     }
 
@@ -26,7 +24,7 @@ public class FraudDetectionHealthCheck : IHealthCheck
         try
         {
             // Check if ML models are loaded
-            var isHealthy = _isolationForest.IsModelLoaded && _clustering.IsModelLoaded;
+            var isHealthy = _fraudAnalysisService.AreModelsReady();
 
             if (isHealthy)
             {

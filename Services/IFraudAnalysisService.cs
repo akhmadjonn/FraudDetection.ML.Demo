@@ -45,29 +45,6 @@ public interface IFraudAnalysisService
 }
 
 /// <summary>
-/// Result of fraud analysis operation
-/// </summary>
-public record FraudAnalysisResult
-{
-    public string SessionId { get; init; } = string.Empty;
-    public string UserId { get; init; } = string.Empty;
-    public string PhoneNumber { get; init; } = string.Empty;
-    public string DeviceKey { get; init; } = string.Empty;
-    public DateTime AnalyzedAt { get; init; }
-    public string RiskLevel { get; init; } = string.Empty;
-    public float AnomalyScore { get; init; }
-    public bool IsAnomaly { get; init; }
-    public int ClusterId { get; init; }
-    public bool IsMultiAccounting { get; init; }
-    public bool IsMultiDevicing { get; init; }
-    public bool IsAccountTakeover { get; init; }
-    public bool IsImpossibleTravel { get; init; }
-    public List<string> SuspiciousReasons { get; init; } = new();
-    public bool AlertSent { get; init; }
-    public List<string> FraudTypesAlerted { get; init; } = new();
-}
-
-/// <summary>
 /// Exception thrown when fraud analysis fails
 /// </summary>
 public class FraudAnalysisException : Exception
