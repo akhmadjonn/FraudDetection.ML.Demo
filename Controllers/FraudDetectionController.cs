@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Beepul.Afs.FraudDetection.ML.Host.Services;
-using Beepul.Afs.FraudDetection.ML.Host.Models;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.Controllers;
 
@@ -8,32 +7,14 @@ namespace Beepul.Afs.FraudDetection.ML.Host.Controllers;
 [Route("api/[controller]")]
 public class FraudDetectionController : ControllerBase
 {
-    private readonly ClickHouseService _clickHouse;
-    private readonly FeatureEngineeringService _featureService;
-    private readonly IsolationForestService _isolationForest;
-    private readonly ClusteringService _clustering;
-    private readonly AnomalyAnalysisService _analysisService;
-    private readonly NotificationService _notification;
-    private readonly HybridAlertService _hybridAlert;
+    private readonly IFraudAnalysisService _fraudAnalysisService;
     private readonly ILogger<FraudDetectionController> _logger;
 
     public FraudDetectionController(
-        ClickHouseService clickHouse,
-        FeatureEngineeringService featureService,
-        IsolationForestService isolationForest,
-        ClusteringService clustering,
-        AnomalyAnalysisService analysisService,
-        NotificationService notification,
-        HybridAlertService hybridAlert,
+        IFraudAnalysisService fraudAnalysisService,
         ILogger<FraudDetectionController> logger)
     {
-        _clickHouse = clickHouse;
-        _featureService = featureService;
-        _isolationForest = isolationForest;
-        _clustering = clustering;
-        _analysisService = analysisService;
-        _notification = notification;
-        _hybridAlert = hybridAlert;
+        _fraudAnalysisService = fraudAnalysisService;
         _logger = logger;
     }
 
@@ -58,115 +39,38 @@ public class FraudDetectionController : ControllerBase
                 });
             }
 
-            _logger.LogInformation("Fraud analysis requested for session: {SessionId}", request.SessionId);
+            // Delegate to service
+            var result = await _fraudAnalysisService.AnalyzeSessionAsync(request.SessionId);
 
-            // Check if models are loaded
-            if (!_isolationForest.IsModelLoaded || !_clustering.IsModelLoaded)
-            {
-                _logger.LogWarning("ML models not loaded yet. Session: {SessionId}", request.SessionId);
-                return StatusCode(503, new ErrorResponse
-                {
-                    Error = "Service Unavailable",
-                    Message = "ML models are not yet loaded. Please try again in a few minutes."
-                });
-            }
-
-            // Get session data from ClickHouse
-            var sessions = await _clickHouse.GetSessionsByIdAsync(request.SessionId);
-            var session = sessions.FirstOrDefault();
-
-            if (session == null)
-            {
-                return NotFound(new ErrorResponse
-                {
-                    Error = "Not Found",
-                    Message = $"Session '{request.SessionId}' not found in database"
-                });
-            }
-
-            // Extract features
-            var features = await _featureService.ExtractFeaturesAsync(session);
-            if (features == null)
-            {
-                return BadRequest(new ErrorResponse
-                {
-                    Error = "Feature Extraction Failed",
-                    Message = "Failed to extract features from session data"
-                });
-            }
-
-            // Get predictions from ML models
-            var anomalyPrediction = _isolationForest.Predict(features);
-            var clusterPrediction = _clustering.Predict(features);
-
-            // Analyze results
-            var analysisResult = _analysisService.AnalyzeSession(
-                features,
-                anomalyPrediction,
-                clusterPrediction);
-
-            // Save analysis result to database
-            await _clickHouse.SaveAnalysisResultAsync(analysisResult);
-
-            // Check if alert should be sent
-            bool alertSent = false;
-            List<string> fraudTypesAlerted = new();
-
-            if (analysisResult.RiskLevel is "CRITICAL" or "HIGH")
-            {
-                var decision = await _hybridAlert.ShouldSendAlertAsync(analysisResult);
-
-                if (decision.ShouldSend)
-                {
-                    await _notification.SendAlertAsync(analysisResult, decision.FraudTypesToAlert);
-                    alertSent = true;
-                    fraudTypesAlerted = decision.FraudTypesToAlert;
-
-                    _logger.LogWarning(
-                        "🚨 {RiskLevel} alert sent! Session: {SessionId}, Score: {Score:F2}, Fraud Types: {Types}",
-                        analysisResult.RiskLevel,
-                        analysisResult.SessionId,
-                        analysisResult.AnomalyScore,
-                        string.Join(", ", fraudTypesAlerted));
-                }
-                else
-                {
-                    _logger.LogDebug(
-                        "Alert throttled for session {SessionId}. Reason: {Reason}",
-                        analysisResult.SessionId,
-                        decision.Reason);
-                }
-            }
-
-            // Build response
-            var response = new FraudAnalysisResponse
-            {
-                SessionId = analysisResult.SessionId,
-                UserId = analysisResult.UserId,
-                PhoneNumber = analysisResult.PhoneNumber,
-                DeviceKey = analysisResult.DeviceKey,
-                AnalyzedAt = analysisResult.AnalyzedAt,
-                RiskLevel = analysisResult.RiskLevel,
-                AnomalyScore = analysisResult.AnomalyScore,
-                IsAnomaly = analysisResult.IsAnomaly,
-                ClusterId = analysisResult.ClusterId,
-                IsMultiAccounting = analysisResult.IsMultiAccounting,
-                IsMultiDevicing = analysisResult.IsMultiDevicing,
-                IsAccountTakeover = analysisResult.IsAccountTakeover,
-                IsImpossibleTravel = analysisResult.IsImpossibleTravel,
-                SuspiciousReasons = analysisResult.SuspiciousReasons,
-                AlertSent = alertSent,
-                FraudTypesAlerted = fraudTypesAlerted
-            };
-
-            _logger.LogInformation(
-                "Session analyzed: {SessionId}, Risk: {RiskLevel}, Score: {Score:F2}, Alert: {Alert}",
-                response.SessionId,
-                response.RiskLevel,
-                response.AnomalyScore,
-                alertSent);
+            // Map to response DTO
+            var response = MapToResponse(result);
 
             return Ok(response);
+        }
+        catch (ModelsNotReadyException ex)
+        {
+            _logger.LogWarning(ex, "ML models not loaded yet. Session: {SessionId}", request.SessionId);
+            return StatusCode(503, new ErrorResponse
+            {
+                Error = "Service Unavailable",
+                Message = ex.Message
+            });
+        }
+        catch (SessionNotFoundException ex)
+        {
+            return NotFound(new ErrorResponse
+            {
+                Error = "Not Found",
+                Message = ex.Message
+            });
+        }
+        catch (FraudAnalysisException ex)
+        {
+            return BadRequest(new ErrorResponse
+            {
+                Error = "Feature Extraction Failed",
+                Message = ex.Message
+            });
         }
         catch (Exception ex)
         {
@@ -198,8 +102,7 @@ public class FraudDetectionController : ControllerBase
                 });
             }
 
-            var results = await _clickHouse.GetAnalysisResultBySessionIdAsync(sessionId);
-            var result = results.FirstOrDefault();
+            var result = await _fraudAnalysisService.GetSessionAnalysisAsync(sessionId);
 
             if (result == null)
             {
@@ -210,26 +113,7 @@ public class FraudDetectionController : ControllerBase
                 });
             }
 
-            var response = new FraudAnalysisResponse
-            {
-                SessionId = result.SessionId,
-                UserId = result.UserId,
-                PhoneNumber = result.PhoneNumber,
-                DeviceKey = result.DeviceKey,
-                AnalyzedAt = result.AnalyzedAt,
-                RiskLevel = result.RiskLevel,
-                AnomalyScore = result.AnomalyScore,
-                IsAnomaly = result.IsAnomaly,
-                ClusterId = result.ClusterId,
-                IsMultiAccounting = result.IsMultiAccounting,
-                IsMultiDevicing = result.IsMultiDevicing,
-                IsAccountTakeover = result.IsAccountTakeover,
-                IsImpossibleTravel = result.IsImpossibleTravel,
-                SuspiciousReasons = result.SuspiciousReasons,
-                AlertSent = false, // Historical data, no new alert sent
-                FraudTypesAlerted = new()
-            };
-
+            var response = MapToResponse(result);
             return Ok(response);
         }
         catch (Exception ex)
@@ -261,27 +145,8 @@ public class FraudDetectionController : ControllerBase
                 });
             }
 
-            var results = await _clickHouse.GetUserFraudHistoryAsync(userId, limit);
-
-            var response = results.Select(r => new FraudAnalysisResponse
-            {
-                SessionId = r.SessionId,
-                UserId = r.UserId,
-                PhoneNumber = r.PhoneNumber,
-                DeviceKey = r.DeviceKey,
-                AnalyzedAt = r.AnalyzedAt,
-                RiskLevel = r.RiskLevel,
-                AnomalyScore = r.AnomalyScore,
-                IsAnomaly = r.IsAnomaly,
-                ClusterId = r.ClusterId,
-                IsMultiAccounting = r.IsMultiAccounting,
-                IsMultiDevicing = r.IsMultiDevicing,
-                IsAccountTakeover = r.IsAccountTakeover,
-                IsImpossibleTravel = r.IsImpossibleTravel,
-                SuspiciousReasons = r.SuspiciousReasons,
-                AlertSent = false,
-                FraudTypesAlerted = new()
-            }).ToList();
+            var results = await _fraudAnalysisService.GetUserHistoryAsync(userId, limit);
+            var response = results.Select(MapToResponse).ToList();
 
             return Ok(response);
         }
@@ -314,27 +179,8 @@ public class FraudDetectionController : ControllerBase
                 });
             }
 
-            var results = await _clickHouse.GetDeviceFraudHistoryAsync(deviceKey, limit);
-
-            var response = results.Select(r => new FraudAnalysisResponse
-            {
-                SessionId = r.SessionId,
-                UserId = r.UserId,
-                PhoneNumber = r.PhoneNumber,
-                DeviceKey = r.DeviceKey,
-                AnalyzedAt = r.AnalyzedAt,
-                RiskLevel = r.RiskLevel,
-                AnomalyScore = r.AnomalyScore,
-                IsAnomaly = r.IsAnomaly,
-                ClusterId = r.ClusterId,
-                IsMultiAccounting = r.IsMultiAccounting,
-                IsMultiDevicing = r.IsMultiDevicing,
-                IsAccountTakeover = r.IsAccountTakeover,
-                IsImpossibleTravel = r.IsImpossibleTravel,
-                SuspiciousReasons = r.SuspiciousReasons,
-                AlertSent = false,
-                FraudTypesAlerted = new()
-            }).ToList();
+            var results = await _fraudAnalysisService.GetDeviceHistoryAsync(deviceKey, limit);
+            var response = results.Select(MapToResponse).ToList();
 
             return Ok(response);
         }
@@ -347,6 +193,32 @@ public class FraudDetectionController : ControllerBase
                 Message = "An error occurred while retrieving device history"
             });
         }
+    }
+
+    /// <summary>
+    /// Maps FraudAnalysisResult to FraudAnalysisResponse DTO
+    /// </summary>
+    private static FraudAnalysisResponse MapToResponse(FraudAnalysisResult result)
+    {
+        return new FraudAnalysisResponse
+        {
+            SessionId = result.SessionId,
+            UserId = result.UserId,
+            PhoneNumber = result.PhoneNumber,
+            DeviceKey = result.DeviceKey,
+            AnalyzedAt = result.AnalyzedAt,
+            RiskLevel = result.RiskLevel,
+            AnomalyScore = result.AnomalyScore,
+            IsAnomaly = result.IsAnomaly,
+            ClusterId = result.ClusterId,
+            IsMultiAccounting = result.IsMultiAccounting,
+            IsMultiDevicing = result.IsMultiDevicing,
+            IsAccountTakeover = result.IsAccountTakeover,
+            IsImpossibleTravel = result.IsImpossibleTravel,
+            SuspiciousReasons = result.SuspiciousReasons,
+            AlertSent = result.AlertSent,
+            FraudTypesAlerted = result.FraudTypesAlerted
+        };
     }
 }
 

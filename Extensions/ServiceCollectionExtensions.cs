@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
 
         // Analysis Services
         services.AddSingleton<AnomalyAnalysisService>();
+        services.AddSingleton<IFraudAnalysisService, FraudAnalysisService>();
 
         // Notification Services
         services.AddSingleton<NotificationService>();
