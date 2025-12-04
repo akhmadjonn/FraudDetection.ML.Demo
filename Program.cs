@@ -3,7 +3,6 @@ using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 using Beepul.Afs.FraudDetection.ML.Host.Extensions;
 using Beepul.Afs.FraudDetection.ML.Host.Middleware;
 using Serilog;
-using OpenTelemetry;
 
 // Detect run mode from command-line arguments
 var runMode = DetectRunMode(args);
@@ -63,13 +62,6 @@ async Task RunWebApiAsync(string[] arguments, IConfiguration config)
 
     // Configure Serilog
     builder.Host.UseSerilog();
-
-    // Add OpenTelemetry instrumentation
-    builder.Services.AddOpenTelemetry()
-        .WithTracing(providerBuilder =>
-        {
-            providerBuilder.AddEntityFrameworkCoreInstrumentation();
-        });
 
     // Register fraud detection services (shared)
     builder.Services.AddFraudDetectionServices();
@@ -138,13 +130,6 @@ async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
 
     // Configure Serilog
     builder.Services.AddSerilog();
-
-    // Add OpenTelemetry instrumentation
-    builder.Services.AddOpenTelemetry()
-        .WithTracing(providerBuilder =>
-        {
-            providerBuilder.AddEntityFrameworkCoreInstrumentation();
-        });
 
     // Register fraud detection services (shared)
     builder.Services.AddFraudDetectionServices();
