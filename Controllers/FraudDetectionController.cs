@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Beepul.Afs.FraudDetection.ML.Api.Services;
+using Beepul.Afs.FraudDetection.ML.Api.Models;
 
 namespace Beepul.Afs.FraudDetection.ML.Api.Controllers;
 

@@ -7,6 +7,7 @@ using Serilog;
 // Detect run mode from command-line arguments
 var runMode = DetectRunMode(args);
 
+var a = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 // Build unified configuration (used by both Serilog and application)
 // This configuration is built ONCE and NOT reloaded during runtime
 var configuration = new ConfigurationBuilder()
@@ -168,6 +169,8 @@ async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
 // ==================== RUN MODE DETECTION ====================
 RunMode DetectRunMode(string[] arguments)
 {
+    return RunMode.Background;
+
     // Check for --hangfire or --background flag
     if (arguments.Any(arg => arg.Equals("--hangfire", StringComparison.OrdinalIgnoreCase) ||
                              arg.Equals("--background", StringComparison.OrdinalIgnoreCase)))

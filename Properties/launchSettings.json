@@ -1,12 +1,35 @@
 ﻿{
-  "$schema": "http://json.schemastore.org/launchsettings.json",
-  "profiles": {
-    "FraudDetection.ML": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
-      }
+    "profiles": {
+        "Development": {
+            "commandName": "Project",
+            "applicationUrl": "http://0.0.0.0:5100",
+            "environmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        "Testing": {
+            "commandName": "Project",
+            "applicationUrl": "http://0.0.0.0:80",
+            "environmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Testing",
+                "OTL_INSTANCE_ID": "test"
+            }
+        },
+        "Regress": {
+            "commandName": "Project",
+            "applicationUrl": "http://0.0.0.0:80",
+            "environmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "OTL_INSTANCE_ID": "regress"
+            }
+        },
+        "Production": {
+            "commandName": "Project",
+            "applicationUrl": "http://0.0.0.0:80",
+            "environmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "OTL_INSTANCE_ID": "prod"
+            }
+        }
     }
-  }
 }
