@@ -1,8 +1,8 @@
 ﻿using Microsoft.ML;
 using Microsoft.ML.Data;
-using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Api.Models;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Services;
+namespace Beepul.Afs.FraudDetection.ML.Api.Services;
 
 public class IsolationForestService
 {

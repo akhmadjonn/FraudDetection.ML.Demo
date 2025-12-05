@@ -1,7 +1,7 @@
-﻿using Beepul.Afs.FraudDetection.ML.Host.Models;
+﻿using Beepul.Afs.FraudDetection.ML.Api.Models;
 using System.Text.Json;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Services;
+namespace Beepul.Afs.FraudDetection.ML.Api.Services;
 
 public class FeatureEngineeringService
 {

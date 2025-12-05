@@ -1,4 +1,4 @@
-namespace Beepul.Afs.FraudDetection.ML.Host.Configuration;
+namespace Beepul.Afs.FraudDetection.ML.Api.Configuration;
 
 /// <summary>
 /// Alerts configuration settings

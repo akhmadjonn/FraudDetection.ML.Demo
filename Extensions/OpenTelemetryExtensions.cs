@@ -4,7 +4,7 @@ using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Extensions;
+namespace Beepul.Afs.FraudDetection.ML.Api.Extensions;
 
 public static class OpenTelemetryExtensions
 {

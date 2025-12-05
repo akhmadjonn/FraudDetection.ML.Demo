@@ -1,4 +1,4 @@
-namespace Beepul.Afs.FraudDetection.ML.Host.Configuration;
+namespace Beepul.Afs.FraudDetection.ML.Api.Configuration;
 
 /// <summary>
 /// Machine Learning configuration settings

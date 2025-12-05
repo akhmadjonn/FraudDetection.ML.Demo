@@ -1,7 +1,7 @@
-using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Beepul.Afs.FraudDetection.ML.Api.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Middleware;
+namespace Beepul.Afs.FraudDetection.ML.Api.Middleware;
 
 public class ApiKeyAuthMiddleware
 {

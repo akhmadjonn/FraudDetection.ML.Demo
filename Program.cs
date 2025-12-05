@@ -1,7 +1,7 @@
-using Beepul.Afs.FraudDetection.ML.Host.Services;
-using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
-using Beepul.Afs.FraudDetection.ML.Host.Extensions;
-using Beepul.Afs.FraudDetection.ML.Host.Middleware;
+using Beepul.Afs.FraudDetection.ML.Api.Services;
+using Beepul.Afs.FraudDetection.ML.Api.BackgroundJobs;
+using Beepul.Afs.FraudDetection.ML.Api.Extensions;
+using Beepul.Afs.FraudDetection.ML.Api.Middleware;
 using Serilog;
 
 // Detect run mode from command-line arguments
@@ -22,7 +22,7 @@ var configuration = new ConfigurationBuilder()
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(configuration)  // Use unified configuration
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "Beepul.Afs.FraudDetection.ML.Host")
+    .Enrich.WithProperty("Application", "Beepul.Afs.FraudDetection.ML.Api")
     .Enrich.WithProperty("RunMode", runMode.ToString())
     .CreateLogger();
 

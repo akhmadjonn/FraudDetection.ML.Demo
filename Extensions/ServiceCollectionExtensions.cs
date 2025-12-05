@@ -1,8 +1,8 @@
-using Beepul.Afs.FraudDetection.ML.Host.Services;
-using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
-using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Beepul.Afs.FraudDetection.ML.Api.Services;
+using Beepul.Afs.FraudDetection.ML.Api.BackgroundJobs;
+using Beepul.Afs.FraudDetection.ML.Api.Configuration;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Extensions;
+namespace Beepul.Afs.FraudDetection.ML.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {

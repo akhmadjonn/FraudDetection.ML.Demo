@@ -3,16 +3,16 @@ FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY ["Beepul.Afs.FraudDetection.ML.Host.csproj", "./"]
-RUN dotnet restore "Beepul.Afs.FraudDetection.ML.Host.csproj"
+COPY ["Beepul.Afs.FraudDetection.ML.Api.csproj", "./"]
+RUN dotnet restore "Beepul.Afs.FraudDetection.ML.Api.csproj"
 
 # Copy everything else and build
 COPY . .
-RUN dotnet build "Beepul.Afs.FraudDetection.ML.Host.csproj" -c Release -o /app/build
+RUN dotnet build "Beepul.Afs.FraudDetection.ML.Api.csproj" -c Release -o /app/build
 
 # Publish stage
 FROM build AS publish
-RUN dotnet publish "Beepul.Afs.FraudDetection.ML.Host.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Beepul.Afs.FraudDetection.ML.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:8.0 AS final
@@ -45,4 +45,4 @@ USER appuser
 # ENTRYPOINT supports multiple run modes:
 # - Web API mode (default): docker run <image>
 # - Background mode: docker run <image> --hangfire
-ENTRYPOINT ["dotnet", "Beepul.Afs.FraudDetection.ML.Host.dll"]
+ENTRYPOINT ["dotnet", "Beepul.Afs.FraudDetection.ML.Api.dll"]

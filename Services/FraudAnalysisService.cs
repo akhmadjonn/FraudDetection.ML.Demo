@@ -1,7 +1,7 @@
-using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Api.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Services;
+namespace Beepul.Afs.FraudDetection.ML.Api.Services;
 
 /// <summary>
 /// Service for orchestrating fraud detection and analysis operations

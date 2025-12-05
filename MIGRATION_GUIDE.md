@@ -8,7 +8,7 @@ This guide explains the migration from a pure Worker Service to a dual-mode arch
 
 ### 1. Project Configuration
 
-**File**: `Beepul.Afs.FraudDetection.ML.Host.csproj`
+**File**: `Beepul.Afs.FraudDetection.ML.Api.csproj`
 
 - ✅ Changed SDK from `Microsoft.NET.Sdk.Worker` to `Microsoft.NET.Sdk.Web`
 - ✅ Added Web API packages:

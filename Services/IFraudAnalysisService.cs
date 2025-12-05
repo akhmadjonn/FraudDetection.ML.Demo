@@ -1,6 +1,6 @@
-using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Api.Models;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Services;
+namespace Beepul.Afs.FraudDetection.ML.Api.Services;
 
 /// <summary>
 /// Service interface for fraud detection and analysis operations

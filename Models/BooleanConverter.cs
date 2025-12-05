@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Models;
+namespace Beepul.Afs.FraudDetection.ML.Api.Models;
 
 /// <summary>
 /// Custom JSON converter that handles boolean values stored as:

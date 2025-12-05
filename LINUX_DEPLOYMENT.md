@@ -68,7 +68,7 @@ sudo apt-get install -y libgomp1 libomp-dev
 dotnet build -c Release
 
 # Run the service
-dotnet run --project Beepul.Afs.FraudDetection.ML.Host.csproj
+dotnet run --project Beepul.Afs.FraudDetection.ML.Api.csproj
 ```
 
 #### Create Systemd Service
@@ -88,7 +88,7 @@ Type=notify
 User=frauddetection
 Group=frauddetection
 WorkingDirectory=/opt/frauddetection
-ExecStart=/usr/bin/dotnet /opt/frauddetection/Beepul.Afs.FraudDetection.ML.Host.dll
+ExecStart=/usr/bin/dotnet /opt/frauddetection/Beepul.Afs.FraudDetection.ML.Api.dll
 Restart=always
 RestartSec=10
 Environment=ASPNETCORE_ENVIRONMENT=Production
@@ -168,7 +168,7 @@ sudo mkswap /swapfile
 sudo swapon /swapfile
 
 # Monitor service memory
-top -p $(pgrep -f "Beepul.Afs.FraudDetection.ML.Host")
+top -p $(pgrep -f "Beepul.Afs.FraudDetection.ML.Api")
 ```
 
 ---
@@ -218,7 +218,7 @@ tail -f /var/log/frauddetection/log-*.txt
 ### Health Checks
 ```bash
 # Check if process is running
-pgrep -f "Beepul.Afs.FraudDetection.ML.Host"
+pgrep -f "Beepul.Afs.FraudDetection.ML.Api"
 
 # Check model files
 ls -lh Models/
@@ -237,7 +237,7 @@ curl http://clickhouse-host:8123/ping
 echo "Testing Fraud Detection ML Deployment..."
 
 # 1. Check if service is running
-if pgrep -f "Beepul.Afs.FraudDetection.ML.Host" > /dev/null; then
+if pgrep -f "Beepul.Afs.FraudDetection.ML.Api" > /dev/null; then
     echo "✅ Service is running"
 else
     echo "❌ Service is NOT running"

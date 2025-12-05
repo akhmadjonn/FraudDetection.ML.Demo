@@ -191,7 +191,7 @@ curl https://api.example.com/health
 ### Project Structure
 
 ```
-Beepul.Afs.FraudDetection.ML.Host/
+Beepul.Afs.FraudDetection.ML.Api/
 ├── Program.cs                    # Entry point with mode detection
 ├── Controllers/                  # API controllers
 │   ├── FraudDetectionController.cs

@@ -1,8 +1,8 @@
-﻿using Beepul.Afs.FraudDetection.ML.Host.Models;
+﻿using Beepul.Afs.FraudDetection.ML.Api.Models;
 using System.Net.Http.Json;
 using System.Text;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Services;
+namespace Beepul.Afs.FraudDetection.ML.Api.Services;
 
 public class NotificationService
 {

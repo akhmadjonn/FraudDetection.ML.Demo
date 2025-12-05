@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using Beepul.Afs.FraudDetection.ML.Host.Services;
+using Beepul.Afs.FraudDetection.ML.Api.Services;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Extensions;
+namespace Beepul.Afs.FraudDetection.ML.Api.Extensions;
 
 public class FraudDetectionHealthCheck : IHealthCheck
 {

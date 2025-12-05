@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Beepul.Afs.FraudDetection.ML.Host.Services;
+using Beepul.Afs.FraudDetection.ML.Api.Services;
 
-namespace Beepul.Afs.FraudDetection.ML.Host.Controllers;
+namespace Beepul.Afs.FraudDetection.ML.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
