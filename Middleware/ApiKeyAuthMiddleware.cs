@@ -6,17 +6,18 @@ namespace Beepul.Afs.FraudDetection.ML.Host.Middleware;
 public class ApiKeyAuthMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly string[] _validApiKeys;
+    private readonly List<PartnerConfig> _partners;
     private readonly ILogger<ApiKeyAuthMiddleware> _logger;
     private const string API_KEY_HEADER = "X-API-Key";
+    public const string PARTNER_NAME_KEY = "PartnerName";
 
     public ApiKeyAuthMiddleware(
         RequestDelegate next,
-        IOptions<ApiKeysSettings> apiKeysSettings,
+        IOptions<PartnersSettings> partnersSettings,
         ILogger<ApiKeyAuthMiddleware> logger)
     {
         _next = next;
-        _validApiKeys = apiKeysSettings.Value.ValidKeys;
+        _partners = partnersSettings.Value.Partners;
         _logger = logger;
     }
 
@@ -45,10 +46,10 @@ public class ApiKeyAuthMiddleware
             return;
         }
 
-        // Check if API keys are configured
-        if (_validApiKeys.Length == 0)
+        // Check if partners are configured
+        if (_partners == null || !_partners.Any())
         {
-            _logger.LogCritical("No API keys configured in appsettings. All requests will be rejected.");
+            _logger.LogCritical("No partners configured in appsettings. All requests will be rejected.");
             context.Response.StatusCode = 500;
             await context.Response.WriteAsJsonAsync(new
             {
@@ -58,9 +59,11 @@ public class ApiKeyAuthMiddleware
             return;
         }
 
-        // Validate API key
+        // Find partner by API key
         var providedKey = extractedApiKey.ToString();
-        if (!_validApiKeys.Contains(providedKey))
+        var partner = _partners.FirstOrDefault(p => p.ApiKey == providedKey);
+
+        if (partner == null)
         {
             _logger.LogWarning("Invalid API Key attempted. Path: {Path}, IP: {IP}, Key: {Key}",
                 context.Request.Path, context.Connection.RemoteIpAddress, providedKey);
@@ -74,8 +77,13 @@ public class ApiKeyAuthMiddleware
             return;
         }
 
-        // API key is valid, continue to next middleware
-        _logger.LogDebug("API Key validated successfully for {Path}", context.Request.Path);
+        // Store partner name in HttpContext for use in controllers/logging
+        context.Items[PARTNER_NAME_KEY] = partner.Name;
+
+        // API key is valid, log partner name and continue
+        _logger.LogInformation("✅ Request from partner: {PartnerName}, Path: {Path}",
+            partner.Name, context.Request.Path);
+
         await _next(context);
     }
 }

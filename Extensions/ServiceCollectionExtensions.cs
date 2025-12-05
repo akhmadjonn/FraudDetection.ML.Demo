@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
         services.Configure<MlSettings>(configuration.GetSection("ML"));
         services.Configure<ConnectionStringsSettings>(configuration.GetSection("ConnectionStrings"));
         services.Configure<AlertsSettings>(configuration.GetSection("Alerts"));
-        services.Configure<ApiKeysSettings>(configuration.GetSection("ApiKeys"));
+        services.Configure<PartnersSettings>(configuration.GetSection("Partners"));
 
         // Database Service
         services.AddSingleton<ClickHouseService>();
