@@ -1,5 +1,7 @@
 ﻿using Beepul.Afs.FraudDetection.ML.Host.Models;
 using Beepul.Afs.FraudDetection.ML.Host.Services;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
 using Tensorflow;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
@@ -14,12 +16,13 @@ public class ModelTrainingJob : BackgroundService
     public ModelTrainingJob(
         IServiceProvider serviceProvider,
         ILogger<ModelTrainingJob> logger,
-        IConfiguration config)
+        IOptions<MlSettings> mlSettings)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _trainingInterval = TimeSpan.FromHours(config.GetValue<int>("ML:TrainingIntervalHours", 6));
-        _minSessionsForTraining = config.GetValue<int>("ML:MinSessionsForTraining", 1000);
+        var settings = mlSettings.Value;
+        _trainingInterval = TimeSpan.FromHours(settings.TrainingIntervalHours);
+        _minSessionsForTraining = settings.MinSessionsForTraining;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

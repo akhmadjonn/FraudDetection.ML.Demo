@@ -1,4 +1,6 @@
 ﻿using Beepul.Afs.FraudDetection.ML.Host.Services;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 
@@ -11,13 +13,13 @@ public class DailyAnalysisJob : BackgroundService
     public DailyAnalysisJob(
         IServiceProvider serviceProvider,
         ILogger<DailyAnalysisJob> logger,
-        IConfiguration config)
+        IOptions<MlSettings> mlSettings)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
 
-        var reportHour = config.GetValue<int>("ML:DailyReportHour", 8);
-        _dailyReportTime = TimeSpan.FromHours(reportHour);
+        var settings = mlSettings.Value;
+        _dailyReportTime = TimeSpan.FromHours(settings.DailyReportHour);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

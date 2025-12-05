@@ -1,6 +1,8 @@
 using ClickHouse.Client.ADO;
 using Dapper;
 using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
@@ -15,16 +17,16 @@ public class AlertHistoryService
     private readonly TimeSpan _throttleWindow;
 
     public AlertHistoryService(
-        IConfiguration config,
+        IOptions<ConnectionStringsSettings> connectionStrings,
+        IOptions<AlertsSettings> alertsSettings,
         ILogger<AlertHistoryService> logger)
     {
-        _connectionString = config.GetConnectionString("ClickHouse")
-            ?? throw new ArgumentNullException("ClickHouse connection string not found");
+        _connectionString = connectionStrings.Value.ClickHouse
+            ?? throw new ArgumentNullException(nameof(connectionStrings), "ClickHouse connection string not found");
         _logger = logger;
 
-        // Default throttle window: 24 hours
-        var hours = config.GetValue<int>("Alerts:ThrottleWindowHours", 24);
-        _throttleWindow = TimeSpan.FromHours(hours);
+        var settings = alertsSettings.Value;
+        _throttleWindow = TimeSpan.FromHours(settings.ThrottleWindowHours);
     }
 
     /// <summary>

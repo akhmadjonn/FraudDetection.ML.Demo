@@ -1,5 +1,7 @@
 ﻿using Beepul.Afs.FraudDetection.ML.Host.Services;
 using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
 
@@ -14,13 +16,14 @@ public class RealTimeScoringJob : BackgroundService
     public RealTimeScoringJob(
         IServiceProvider serviceProvider,
         ILogger<RealTimeScoringJob> logger,
-        IConfiguration config)
+        IOptions<MlSettings> mlSettings)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _lastProcessedTime = DateTime.UtcNow.AddMinutes(-10);
-        _checkInterval = TimeSpan.FromSeconds(config.GetValue<int>("ML:ScoringIntervalSeconds", 10));
-        _batchSize = config.GetValue<int>("ML:ScoringBatchSize", 100);
+        var settings = mlSettings.Value;
+        _checkInterval = TimeSpan.FromSeconds(settings.ScoringIntervalSeconds);
+        _batchSize = settings.ScoringBatchSize;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

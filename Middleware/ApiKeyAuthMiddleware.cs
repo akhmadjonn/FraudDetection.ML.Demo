@@ -1,19 +1,22 @@
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
+
 namespace Beepul.Afs.FraudDetection.ML.Host.Middleware;
 
 public class ApiKeyAuthMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IConfiguration _configuration;
+    private readonly string[] _validApiKeys;
     private readonly ILogger<ApiKeyAuthMiddleware> _logger;
     private const string API_KEY_HEADER = "X-API-Key";
 
     public ApiKeyAuthMiddleware(
         RequestDelegate next,
-        IConfiguration configuration,
+        IOptions<ApiKeysSettings> apiKeysSettings,
         ILogger<ApiKeyAuthMiddleware> logger)
     {
         _next = next;
-        _configuration = configuration;
+        _validApiKeys = apiKeysSettings.Value.ValidKeys;
         _logger = logger;
     }
 
@@ -42,10 +45,8 @@ public class ApiKeyAuthMiddleware
             return;
         }
 
-        // Get valid API keys from configuration
-        var validApiKeys = _configuration.GetSection("ApiKeys:ValidKeys").Get<string[]>() ?? Array.Empty<string>();
-
-        if (validApiKeys.Length == 0)
+        // Check if API keys are configured
+        if (_validApiKeys.Length == 0)
         {
             _logger.LogCritical("No API keys configured in appsettings. All requests will be rejected.");
             context.Response.StatusCode = 500;
@@ -59,7 +60,7 @@ public class ApiKeyAuthMiddleware
 
         // Validate API key
         var providedKey = extractedApiKey.ToString();
-        if (!validApiKeys.Contains(providedKey))
+        if (!_validApiKeys.Contains(providedKey))
         {
             _logger.LogWarning("Invalid API Key attempted. Path: {Path}, IP: {IP}, Key: {Key}",
                 context.Request.Path, context.Connection.RemoteIpAddress, providedKey);

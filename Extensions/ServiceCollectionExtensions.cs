@@ -1,5 +1,6 @@
 using Beepul.Afs.FraudDetection.ML.Host.Services;
 using Beepul.Afs.FraudDetection.ML.Host.BackgroundJobs;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.Extensions;
 
@@ -8,8 +9,14 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers all core fraud detection services (shared between Web API and Background modes)
     /// </summary>
-    public static IServiceCollection AddFraudDetectionServices(this IServiceCollection services)
+    public static IServiceCollection AddFraudDetectionServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Configure strongly-typed settings
+        services.Configure<MlSettings>(configuration.GetSection("ML"));
+        services.Configure<ConnectionStringsSettings>(configuration.GetSection("ConnectionStrings"));
+        services.Configure<AlertsSettings>(configuration.GetSection("Alerts"));
+        services.Configure<ApiKeysSettings>(configuration.GetSection("ApiKeys"));
+
         // Database Service
         services.AddSingleton<ClickHouseService>();
 

@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Beepul.Afs.FraudDetection.ML.Host.Services;
 
@@ -12,32 +14,31 @@ public class HybridAlertService
     private readonly ConcurrentDictionary<string, ThrottleEntry> _throttleCache = new();
     private readonly ILogger<HybridAlertService> _logger;
     private readonly AlertHistoryService? _historyService;
-    private readonly IConfiguration _config;
     private readonly bool _enableDatabasePersistence;
     private readonly TimeSpan _defaultThrottleWindow;
-    private readonly Dictionary<string, FraudTypeConfig> _fraudTypeConfigs;
+    private readonly Dictionary<string, FraudTypeConfigInternal> _fraudTypeConfigs;
 
     public HybridAlertService(
         ILogger<HybridAlertService> logger,
-        IConfiguration config,
+        IOptions<AlertsSettings> alertsSettings,
         AlertHistoryService historyService)
     {
         _logger = logger;
-        _config = config;
         _historyService = historyService;
 
+        var settings = alertsSettings.Value;
+
         // Load configuration
-        _enableDatabasePersistence = config.GetValue<bool>("Alerts:EnableDatabasePersistence", true);
-        var defaultMinutes = config.GetValue<int>("Alerts:DefaultThrottleWindowMinutes", 60);
-        _defaultThrottleWindow = TimeSpan.FromMinutes(defaultMinutes);
+        _enableDatabasePersistence = settings.EnableDatabasePersistence;
+        _defaultThrottleWindow = TimeSpan.FromMinutes(settings.DefaultThrottleWindowMinutes);
 
         // Load fraud type configurations
-        _fraudTypeConfigs = LoadFraudTypeConfigs();
+        _fraudTypeConfigs = LoadFraudTypeConfigs(settings);
 
         _logger.LogInformation(
             "HybridAlertService initialized. Database persistence: {Enabled}, Default window: {Window} min",
             _enableDatabasePersistence,
-            defaultMinutes);
+            settings.DefaultThrottleWindowMinutes);
     }
 
     /// <summary>
@@ -276,13 +277,13 @@ public class HybridAlertService
     /// <summary>
     /// Gets configuration for specific fraud type
     /// </summary>
-    private FraudTypeConfig GetFraudTypeConfig(string fraudType)
+    private FraudTypeConfigInternal GetFraudTypeConfig(string fraudType)
     {
         if (_fraudTypeConfigs.TryGetValue(fraudType, out var config))
             return config;
 
         // Return default config if not found
-        return new FraudTypeConfig
+        return new FraudTypeConfigInternal
         {
             Enabled = true,
             ThrottleWindow = _defaultThrottleWindow,
@@ -291,12 +292,11 @@ public class HybridAlertService
     }
 
     /// <summary>
-    /// Loads fraud type configurations from appsettings.json
+    /// Loads fraud type configurations from AlertsSettings
     /// </summary>
-    private Dictionary<string, FraudTypeConfig> LoadFraudTypeConfigs()
+    private Dictionary<string, FraudTypeConfigInternal> LoadFraudTypeConfigs(AlertsSettings settings)
     {
-        var configs = new Dictionary<string, FraudTypeConfig>();
-        var section = _config.GetSection("Alerts:FraudTypeSettings");
+        var configs = new Dictionary<string, FraudTypeConfigInternal>();
 
         foreach (var fraudType in new[]
         {
@@ -304,17 +304,25 @@ public class HybridAlertService
             "OtpBruteforce", "DeviceSpoofing", "VpnUsage", "UnusualTiming", "GeneralSuspicious"
         })
         {
-            var typeSection = section.GetSection(fraudType);
-            var enabled = typeSection.GetValue<bool>("Enabled", true);
-            var minutes = typeSection.GetValue<int>("ThrottleWindowMinutes", (int)_defaultThrottleWindow.TotalMinutes);
-            var priority = typeSection.GetValue<string>("Priority", "MEDIUM");
-
-            configs[fraudType] = new FraudTypeConfig
+            if (settings.FraudTypeSettings.TryGetValue(fraudType, out var config))
             {
-                Enabled = enabled,
-                ThrottleWindow = TimeSpan.FromMinutes(minutes),
-                Priority = priority ?? "MEDIUM"
-            };
+                configs[fraudType] = new FraudTypeConfigInternal
+                {
+                    Enabled = config.Enabled,
+                    ThrottleWindow = TimeSpan.FromMinutes(config.ThrottleWindowMinutes),
+                    Priority = config.Priority
+                };
+            }
+            else
+            {
+                // Use default if not configured
+                configs[fraudType] = new FraudTypeConfigInternal
+                {
+                    Enabled = true,
+                    ThrottleWindow = _defaultThrottleWindow,
+                    Priority = "MEDIUM"
+                };
+            }
         }
 
         return configs;
@@ -401,9 +409,9 @@ public class ThrottleEntry
 }
 
 /// <summary>
-/// Configuration for a specific fraud type
+/// Internal configuration for a specific fraud type (runtime version with TimeSpan)
 /// </summary>
-public class FraudTypeConfig
+internal class FraudTypeConfigInternal
 {
     public bool Enabled { get; set; }
     public TimeSpan ThrottleWindow { get; set; }

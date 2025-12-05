@@ -64,7 +64,7 @@ async Task RunWebApiAsync(string[] arguments, IConfiguration config)
     builder.AddOpenTelemetryInstrumentation();
 
     // Register fraud detection services (shared)
-    builder.Services.AddFraudDetectionServices();
+    builder.Services.AddFraudDetectionServices(builder.Configuration);
 
     // Register Web API services
     builder.Services.AddWebApiServices();
@@ -132,7 +132,7 @@ async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
     builder.AddOpenTelemetryInstrumentation();
 
     // Register fraud detection services (shared)
-    builder.Services.AddFraudDetectionServices();
+    builder.Services.AddFraudDetectionServices(builder.Configuration);
 
     // Register background jobs
     builder.Services.AddBackgroundJobs();

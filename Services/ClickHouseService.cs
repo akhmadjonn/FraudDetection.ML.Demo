@@ -1,6 +1,8 @@
 ﻿using ClickHouse.Client.ADO;
 using Dapper;
 using Beepul.Afs.FraudDetection.ML.Host.Models;
+using Beepul.Afs.FraudDetection.ML.Host.Configuration;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -11,10 +13,10 @@ public class ClickHouseService
     private readonly string _connectionString;
     private readonly ILogger<ClickHouseService> _logger;
 
-    public ClickHouseService(IConfiguration config, ILogger<ClickHouseService> logger)
+    public ClickHouseService(IOptions<ConnectionStringsSettings> connectionStrings, ILogger<ClickHouseService> logger)
     {
-        _connectionString = config.GetConnectionString("ClickHouse")
-            ?? throw new ArgumentNullException("ClickHouse connection string not found");
+        _connectionString = connectionStrings.Value.ClickHouse
+            ?? throw new ArgumentNullException(nameof(connectionStrings), "ClickHouse connection string not found");
         _logger = logger;
     }
 
