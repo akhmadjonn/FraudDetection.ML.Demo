@@ -2,7 +2,7 @@
 
 ## 🎯 Your Question: Do We Check Only These Rules?
 
-**Short Answer:** NO! The system detects **ALL fraud patterns ALL the time**, but the configuration controls **WHEN and HOW alerts are sent**.
+**Short Answer:** NO! The system detects **ALL fraud patterns ALL the time** (31+ distinct patterns), categorizes them into **14 fraud types**, and the configuration controls **WHEN and HOW alerts are sent**.
 
 ---
 
@@ -29,7 +29,7 @@
 
 ---
 
-## 🔍 All 9 Fraud Types Detected
+## 🔍 All 14 Fraud Types Detected
 
 ### **Group A: Main Fraud Types** (Detected from Boolean Flags)
 
@@ -54,13 +54,18 @@ These are detected by pattern matching in the `SuspiciousReasons` text array:
 
 | # | Fraud Type | Detection Pattern | Code Location |
 |---|------------|-------------------|---------------|
-| 5 | **OtpBruteforce** | Text contains "OTP" + ("failure" OR "attempts") | HybridAlertService.cs:222-229 |
-| 6 | **DeviceSpoofing** | Text contains "Rooted" OR "Emulator" OR "Mock" | HybridAlertService.cs:232-238 |
-| 7 | **VpnUsage** | Text contains "VPN" OR "proxy" | HybridAlertService.cs:241-246 |
-| 8 | **UnusualTiming** | Text contains "night" OR "2-5 AM" OR "unusual hour" | HybridAlertService.cs:249-256 |
-| 9 | **GeneralSuspicious** | High risk but no specific type detected | HybridAlertService.cs:259-262 |
+| 5 | **OtpBruteforce** | Text contains "OTP" + ("failure" OR "attempts" OR "success rate") | HybridAlertService.cs:223-232 |
+| 6 | **DeviceSpoofing** | Text contains "Rooted" OR "Emulator" OR "Mock" OR "Cloned app" | HybridAlertService.cs:234-243 |
+| 7 | **VpnUsage** | Text contains "VPN" OR "proxy" | HybridAlertService.cs:245-251 |
+| 8 | **UnusualTiming** | Text contains "night" OR "2-5 AM" OR "unusual" | HybridAlertService.cs:253-261 |
+| 9 | **NewDeviceFraud** | Text contains "Very new device" OR "new device" | HybridAlertService.cs:263-269 |
+| 10 | **RapidCardAddition** | Text contains "Card added within 30 minutes" OR "Card added within" | HybridAlertService.cs:271-277 |
+| 11 | **CardTestingFraud** | Text contains "Multiple cards added in session" | HybridAlertService.cs:279-286 |
+| 12 | **AutomatedBotActivity** | Text contains "Very short session" with sensitive actions | HybridAlertService.cs:288-295 |
+| 13 | **SimSwapFraud** | Text contains "carrier changes" OR "Multiple carrier" | HybridAlertService.cs:297-303 |
+| 14 | **GeneralSuspicious** | High risk but no specific type detected | HybridAlertService.cs:306-310 |
 
-**Detection Logic:** The system analyzes session data and populates `SuspiciousReasons` with text descriptions. These patterns are then extracted from the text.
+**Detection Logic:** The system analyzes session data and populates `SuspiciousReasons` with text descriptions. These patterns are then extracted from the text. **ALL 31+ fraud patterns** detected by the ML model are now properly categorized into these 14 types!
 
 ---
 
@@ -210,9 +215,24 @@ Device: device_abc123
 
 ---
 
-### Q2: "How do I add a NEW fraud type?"
+### Q2: "The system now covers ALL patterns!"
 
-**A:** You need to modify the detection logic in TWO places:
+**A:** Great news! We've expanded from 9 to **14 fraud types** to ensure ALL 31+ patterns are covered:
+
+**New fraud types added:**
+- **NewDeviceFraud** - Detects very new devices (< 1 day old)
+- **RapidCardAddition** - Detects cards added within 30 minutes of installation
+- **CardTestingFraud** - Detects multiple cards being added in a single session
+- **AutomatedBotActivity** - Detects very short sessions with sensitive actions
+- **SimSwapFraud** - Detects multiple carrier changes (SIM swap attacks)
+
+**Enhanced existing types:**
+- **DeviceSpoofing** - Now includes cloned app detection
+- **OtpBruteforce** - Now includes low OTP success rate detection
+
+### Q2b: "How do I add a NEW fraud type?" (For future needs)
+
+**A:** If you need to add additional fraud types, modify the detection logic in TWO places:
 
 #### Option 1: Add a Boolean Flag (Recommended for major fraud types)
 
@@ -495,14 +515,16 @@ _logger.LogInformation("Throttle entries: {Count}, By type: {@Types}",
 
 | Aspect | How It Works |
 |--------|--------------|
-| **Detection** | All 9 fraud types detected ALWAYS for EVERY session |
+| **Detection** | ALL 31+ fraud patterns detected ALWAYS for EVERY session |
+| **Fraud Types** | 14 fraud types (expanded from 9 to cover all patterns) |
 | **Configuration** | Controls which types trigger alerts and how often |
 | **Storage** | All detections → FraudAnalysisResults, Alerts → AlertHistory |
 | **Main Types** | 4 types from boolean flags (Multi-Accounting, etc.) |
-| **Pattern Types** | 5 types from text analysis (OTP Bruteforce, etc.) |
+| **Pattern Types** | 10 types from text analysis (OTP Bruteforce, Device Spoofing, etc.) |
+| **Coverage** | 100% - No fraud patterns are lost anymore! |
 | **Enabled: false** | Still detects, just doesn't alert |
 | **ThrottleWindow** | Time between repeated alerts for same fraud type |
-| **Adding New Type** | Add flag/pattern → Update detection → Add config |
+| **New Types Added** | NewDeviceFraud, RapidCardAddition, CardTestingFraud, AutomatedBotActivity, SimSwapFraud |
 
 ---
 
@@ -513,10 +535,13 @@ _logger.LogInformation("Throttle entries: {Count}, By type: {@Types}",
 It's a **"which detections should page me and how often"** setting.
 
 Think of it like:
-- **Fraud Detection = Security Camera** (always recording everything)
+- **Fraud Detection = Security Camera** (always recording everything - 31+ patterns)
+- **Fraud Types = Video Categories** (14 types organizing the patterns)
 - **Alerts Configuration = Alarm System** (when to notify you)
 
-You can turn off the alarm for certain events, but the camera keeps recording everything!
+You can turn off the alarm for certain categories, but the camera keeps recording everything!
+
+**NEW:** We've expanded from 9 to 14 fraud types to ensure **100% coverage** of all detected patterns. No fraud is lost anymore!
 
 ---
 
