@@ -174,9 +174,17 @@ dotnet user-secrets set "ConnectionStrings:ClickHouse" "Host=192.168.1.100;Port=
     "TeamsWebhook": "https://outlook.office.com/webhook/a1b2c3d4-e5f6-7890-abcd-ef1234567890@12345678-90ab-cdef-1234-567890abcdef/IncomingWebhook/1a2b3c4d5e6f7890abcdef123456/12345678-90ab-cdef-1234-567890abcdef",
     "TelegramBotToken": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890",
     "TelegramChatId": "-1001234567890"
+  },
+  "ApiKeys": {
+    "ValidKeys": [
+      "dev-key-xK9mP2vL4qR8wE3nT7yU5zH1jF6sD0aQ",
+      "test-key-yU7mL2vK6qR9wE4nT8zH3jF1sD5aQ0pP"
+    ]
   }
 }
 ```
+
+**Note:** `ApiKeys` are only needed if running in **Web API mode**. See `docs/API_KEY_CONFIGURATION.md` for details.
 
 ### OR using CLI (one by one):
 
