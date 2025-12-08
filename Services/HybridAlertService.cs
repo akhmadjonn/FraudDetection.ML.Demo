@@ -198,6 +198,7 @@ public class HybridAlertService
 
     /// <summary>
     /// Detects all fraud types from the analysis result (main + pattern-based)
+    /// Now detecting ALL 31+ fraud patterns to ensure nothing is lost!
     /// </summary>
     private List<string> DetectAllFraudTypes(FraudAnalysisResult result)
     {
@@ -219,20 +220,23 @@ public class HybridAlertService
         // Pattern-based fraud types (from SuspiciousReasons)
         foreach (var reason in result.SuspiciousReasons)
         {
-            // OTP Bruteforce
+            // OTP Bruteforce (includes low success rate)
             if ((reason.Contains("OTP", StringComparison.OrdinalIgnoreCase) &&
                  reason.Contains("failure", StringComparison.OrdinalIgnoreCase)) ||
                 (reason.Contains("OTP", StringComparison.OrdinalIgnoreCase) &&
-                 reason.Contains("attempts", StringComparison.OrdinalIgnoreCase)))
+                 reason.Contains("attempts", StringComparison.OrdinalIgnoreCase)) ||
+                (reason.Contains("OTP success rate", StringComparison.OrdinalIgnoreCase)))
             {
                 if (!fraudTypes.Contains("OtpBruteforce"))
                     fraudTypes.Add("OtpBruteforce");
             }
 
-            // Device Spoofing
+            // Device Spoofing (includes rooted, emulator, cloned app)
             if (reason.Contains("Rooted", StringComparison.OrdinalIgnoreCase) ||
+                reason.Contains("Jailbroken", StringComparison.OrdinalIgnoreCase) ||
                 reason.Contains("Emulator", StringComparison.OrdinalIgnoreCase) ||
-                reason.Contains("Mock", StringComparison.OrdinalIgnoreCase))
+                reason.Contains("Mock", StringComparison.OrdinalIgnoreCase) ||
+                reason.Contains("Cloned app", StringComparison.OrdinalIgnoreCase))
             {
                 if (!fraudTypes.Contains("DeviceSpoofing"))
                     fraudTypes.Add("DeviceSpoofing");
@@ -249,10 +253,53 @@ public class HybridAlertService
             // Unusual Timing
             if (reason.Contains("night", StringComparison.OrdinalIgnoreCase) ||
                 reason.Contains("2-5 AM", StringComparison.OrdinalIgnoreCase) ||
-                reason.Contains("unusual hour", StringComparison.OrdinalIgnoreCase))
+                reason.Contains("unusual", StringComparison.OrdinalIgnoreCase) ||
+                reason.Contains("Unusual activity time", StringComparison.OrdinalIgnoreCase))
             {
                 if (!fraudTypes.Contains("UnusualTiming"))
                     fraudTypes.Add("UnusualTiming");
+            }
+
+            // NEW: New Device Fraud (very new device)
+            if (reason.Contains("Very new device", StringComparison.OrdinalIgnoreCase) ||
+                reason.Contains("new device", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!fraudTypes.Contains("NewDeviceFraud"))
+                    fraudTypes.Add("NewDeviceFraud");
+            }
+
+            // NEW: Rapid Card Addition (card added within 30 min)
+            if (reason.Contains("Card added within 30 minutes", StringComparison.OrdinalIgnoreCase) ||
+                reason.Contains("Card added within", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!fraudTypes.Contains("RapidCardAddition"))
+                    fraudTypes.Add("RapidCardAddition");
+            }
+
+            // NEW: Card Testing Fraud (multiple cards in session)
+            if (reason.Contains("Multiple cards added in session", StringComparison.OrdinalIgnoreCase) ||
+                (reason.Contains("cards added", StringComparison.OrdinalIgnoreCase) &&
+                 reason.Contains("session", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!fraudTypes.Contains("CardTestingFraud"))
+                    fraudTypes.Add("CardTestingFraud");
+            }
+
+            // NEW: Automated Bot Activity (very short session with sensitive actions)
+            if (reason.Contains("Very short session", StringComparison.OrdinalIgnoreCase) ||
+                (reason.Contains("short session", StringComparison.OrdinalIgnoreCase) &&
+                 reason.Contains("sensitive", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!fraudTypes.Contains("AutomatedBotActivity"))
+                    fraudTypes.Add("AutomatedBotActivity");
+            }
+
+            // NEW: SIM Swap Fraud (multiple carrier changes)
+            if (reason.Contains("carrier changes", StringComparison.OrdinalIgnoreCase) ||
+                reason.Contains("Multiple carrier", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!fraudTypes.Contains("SimSwapFraud"))
+                    fraudTypes.Add("SimSwapFraud");
             }
         }
 
@@ -300,8 +347,12 @@ public class HybridAlertService
 
         foreach (var fraudType in new[]
         {
+            // Original 9 types
             "MultiAccounting", "MultiDevicing", "AccountTakeover", "ImpossibleTravel",
-            "OtpBruteforce", "DeviceSpoofing", "VpnUsage", "UnusualTiming", "GeneralSuspicious"
+            "OtpBruteforce", "DeviceSpoofing", "VpnUsage", "UnusualTiming", "GeneralSuspicious",
+            // NEW: Additional types to cover ALL fraud patterns
+            "NewDeviceFraud", "RapidCardAddition", "CardTestingFraud",
+            "AutomatedBotActivity", "SimSwapFraud"
         })
         {
             if (settings.FraudTypeSettings.TryGetValue(fraudType, out var config))
