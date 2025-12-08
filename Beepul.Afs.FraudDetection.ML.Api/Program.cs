@@ -81,6 +81,9 @@ async Task RunWebApiAsync(string[] arguments, IConfiguration config)
 
     // Initialize services on startup
     Log.Information("Initializing services...");
+    var clickHouseService = app.Services.GetRequiredService<ClickHouseService>();
+    await clickHouseService.InitializeAsync();
+
     var alertHistoryService = app.Services.GetRequiredService<AlertHistoryService>();
     await alertHistoryService.InitializeAsync();
 
@@ -149,6 +152,12 @@ async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
 
     logger.LogInformation("Environment: {Environment}", builder.Environment.EnvironmentName);
     logger.LogInformation("Models Directory: {ModelsDirectory}", modelsDir);
+
+    // Initialize ClickHouse tables
+    logger.LogInformation("Initializing ClickHouse tables...");
+    var clickHouseService = host.Services.GetRequiredService<ClickHouseService>();
+    await clickHouseService.InitializeAsync();
+    logger.LogInformation("FraudAnalysisResults table initialized successfully");
 
     // Initialize AlertHistory table
     logger.LogInformation("Initializing AlertHistory table...");

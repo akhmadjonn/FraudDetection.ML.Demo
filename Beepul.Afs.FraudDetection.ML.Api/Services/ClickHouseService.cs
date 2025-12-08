@@ -20,6 +20,42 @@ public class ClickHouseService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Ensures FraudAnalysisResults table exists in ClickHouse
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var createTableQuery = @"
+            CREATE TABLE IF NOT EXISTS FraudAnalysisResults
+            (
+                SessionId String,
+                ProfileId String,
+                DeviceKey String,
+                GlobalDeviceId String,
+                UserId String,
+                PhoneNumber String,
+                AnalyzedAt DateTime,
+                AnomalyScore Float32,
+                IsAnomaly UInt8,
+                ClusterId UInt32,
+                RiskLevel String,
+                IsMultiAccounting UInt8,
+                IsMultiDevicing UInt8,
+                IsAccountTakeover UInt8,
+                IsImpossibleTravel UInt8,
+                SuspiciousReasons Array(String),
+                Features String
+            )
+            ENGINE = MergeTree()
+            ORDER BY (AnalyzedAt, SessionId)";
+
+        await connection.ExecuteAsync(createTableQuery);
+        _logger.LogInformation("FraudAnalysisResults table initialized");
+    }
+
     // ==================== SESSION QUERIES ====================
 
     public async Task<List<SessionRecord>> GetRecentSessionsAsync(
@@ -428,33 +464,6 @@ public class ClickHouseService
 
         using var connection = new ClickHouseConnection(_connectionString);
         await connection.OpenAsync();
-
-        // Create table if not exists
-        var createTableQuery = @"
-            CREATE TABLE IF NOT EXISTS FraudAnalysisResults
-            (
-                SessionId String,
-                ProfileId String,
-                DeviceKey String,
-                GlobalDeviceId String,
-                UserId String,
-                PhoneNumber String,
-                AnalyzedAt DateTime,
-                AnomalyScore Float32,
-                IsAnomaly UInt8,
-                ClusterId UInt32,
-                RiskLevel String,
-                IsMultiAccounting UInt8,
-                IsMultiDevicing UInt8,
-                IsAccountTakeover UInt8,
-                IsImpossibleTravel UInt8,
-                SuspiciousReasons Array(String),
-                Features String
-            )
-            ENGINE = MergeTree()
-            ORDER BY (AnalyzedAt, SessionId)";
-
-        await connection.ExecuteAsync(createTableQuery);
 
         // Insert result
         var insertQuery = @"
