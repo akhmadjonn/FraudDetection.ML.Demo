@@ -3,16 +3,16 @@ FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY ["Beepul.Afs.FraudDetection.ML.Api.csproj", "./"]
-RUN dotnet restore "Beepul.Afs.FraudDetection.ML.Api.csproj"
+COPY ["Beepul.Afs.FraudDetection.ML.Api/Beepul.Afs.FraudDetection.ML.Api.csproj", "Beepul.Afs.FraudDetection.ML.Api/"]
+RUN dotnet restore "Beepul.Afs.FraudDetection.ML.Api/Beepul.Afs.FraudDetection.ML.Api.csproj"
 
 # Copy everything else and build
 COPY . .
-RUN dotnet build "Beepul.Afs.FraudDetection.ML.Api.csproj" -c Release -o /app/build
+RUN dotnet build "Beepul.Afs.FraudDetection.ML.Api/Beepul.Afs.FraudDetection.ML.Api.csproj" -c Release -o /app/build
 
 # Publish stage
 FROM build AS publish
-RUN dotnet publish "Beepul.Afs.FraudDetection.ML.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Beepul.Afs.FraudDetection.ML.Api/Beepul.Afs.FraudDetection.ML.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:8.0 AS final
