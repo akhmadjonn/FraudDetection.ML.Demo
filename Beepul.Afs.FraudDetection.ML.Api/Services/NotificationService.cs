@@ -1,4 +1,6 @@
 ﻿using Beepul.Afs.FraudDetection.ML.Api.Models;
+using Beepul.Afs.FraudDetection.ML.Api.Configuration;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -8,17 +10,20 @@ public class NotificationService
 {
     private readonly ILogger<NotificationService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly AlertsSettings _alertsSettings;
     private readonly string? _teamsWebhookUrl;
     private readonly string? _telegramBotToken;
     private readonly string? _telegramChatId;
 
     public NotificationService(
         IConfiguration config,
+        IOptions<AlertsSettings> alertsSettings,
         ILogger<NotificationService> logger,
         HttpClient httpClient)
     {
         _logger = logger;
         _httpClient = httpClient;
+        _alertsSettings = alertsSettings.Value;
         _teamsWebhookUrl = config["Notifications:TeamsWebhook"];
         _telegramBotToken = config["Notifications:TelegramBotToken"];
         _telegramChatId = config["Notifications:TelegramChatId"];
@@ -280,6 +285,13 @@ public class NotificationService
 
     private async Task SendToTeamsAsync(string message, string severity)
     {
+        // Check if Teams notifications are enabled
+        if (!_alertsSettings.EnableTeamsNotifications)
+        {
+            _logger.LogDebug("Teams notifications are disabled");
+            return;
+        }
+
         if (string.IsNullOrEmpty(_teamsWebhookUrl)) return;
 
         try
@@ -334,6 +346,13 @@ public class NotificationService
 
     private async Task SendToTelegramAsync(string message)
     {
+        // Check if Telegram notifications are enabled
+        if (!_alertsSettings.EnableTelegramNotifications)
+        {
+            _logger.LogDebug("Telegram notifications are disabled");
+            return;
+        }
+
         if (string.IsNullOrEmpty(_telegramBotToken) || string.IsNullOrEmpty(_telegramChatId))
             return;
 

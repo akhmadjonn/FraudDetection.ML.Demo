@@ -11,6 +11,16 @@ public class AlertsSettings
     public bool EnableDatabasePersistence { get; set; } = true;
 
     /// <summary>
+    /// Enable Teams notifications (can be controlled via secrets/configuration)
+    /// </summary>
+    public bool EnableTeamsNotifications { get; set; } = true;
+
+    /// <summary>
+    /// Enable Telegram notifications (can be controlled via secrets/configuration)
+    /// </summary>
+    public bool EnableTelegramNotifications { get; set; } = true;
+
+    /// <summary>
     /// Default throttle window in minutes
     /// </summary>
     public int DefaultThrottleWindowMinutes { get; set; } = 60;
