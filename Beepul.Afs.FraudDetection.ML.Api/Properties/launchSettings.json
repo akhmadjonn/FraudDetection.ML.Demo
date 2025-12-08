@@ -2,7 +2,7 @@
     "profiles": {
         "Development": {
             "commandName": "Project",
-            "applicationUrl": "http://0.0.0.0:5100",
+            "applicationUrl": "http://locahost:5100",
             "environmentVariables": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
             }

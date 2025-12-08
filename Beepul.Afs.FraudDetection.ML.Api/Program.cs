@@ -95,11 +95,7 @@ async Task RunWebApiAsync(string[] arguments, IConfiguration config)
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
-        app.UseSwaggerUI(c =>
-        {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fraud Detection ML API v1");
-            c.RoutePrefix = string.Empty; // Swagger at root
-        });
+        app.UseSwaggerUI();
     }
 
     app.UseSerilogRequestLogging();
@@ -178,9 +174,7 @@ async Task RunBackgroundAsync(string[] arguments, IConfiguration config)
 // ==================== RUN MODE DETECTION ====================
 RunMode DetectRunMode(string[] arguments)
 {
-    return RunMode.Background;
-
-    // Check for --hangfire or --background flag
+     // Check for --hangfire or --background flag
     if (arguments.Any(arg => arg.Equals("--hangfire", StringComparison.OrdinalIgnoreCase) ||
                              arg.Equals("--background", StringComparison.OrdinalIgnoreCase)))
     {
