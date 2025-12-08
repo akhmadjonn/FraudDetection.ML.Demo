@@ -1,0 +1,144 @@
+{
+    "OpenTelemetry": {
+        "ServiceName": "fraud-detectionp-ml-prod",
+        "ServiceNamespace": "beepul_afs",
+        "CollectorUrl": "http://172.30.137.101:4317"
+    },
+    "ML": {
+        "TrainingIntervalHours": 6,
+        "MinSessionsForTraining": 1000,
+        "ScoringIntervalSeconds": 10,
+        "ScoringBatchSize": 100,
+        "DailyReportHour": 8
+    },
+    "Alerts": {
+        "EnableDatabasePersistence": true,
+        "EnableTeamsNotifications": true,
+        "EnableTelegramNotifications": true,
+        "DefaultThrottleWindowMinutes": 60,
+        "ThrottleWindowHours": 24,
+        "FraudTypeSettings": {
+            "MultiAccounting": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 60,
+                "Priority": "HIGH"
+            },
+            "MultiDevicing": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 60,
+                "Priority": "HIGH"
+            },
+            "AccountTakeover": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 30,
+                "Priority": "CRITICAL"
+            },
+            "ImpossibleTravel": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 30,
+                "Priority": "CRITICAL"
+            },
+            "OtpBruteforce": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 45,
+                "Priority": "MEDIUM"
+            },
+            "DeviceSpoofing": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 120,
+                "Priority": "MEDIUM"
+            },
+            "VpnUsage": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 120,
+                "Priority": "LOW"
+            },
+            "UnusualTiming": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 180,
+                "Priority": "LOW"
+            },
+            "GeneralSuspicious": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 90,
+                "Priority": "MEDIUM"
+            },
+            "NewDeviceFraud": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 60,
+                "Priority": "HIGH"
+            },
+            "RapidCardAddition": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 30,
+                "Priority": "CRITICAL"
+            },
+            "CardTestingFraud": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 45,
+                "Priority": "HIGH"
+            },
+            "AutomatedBotActivity": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 60,
+                "Priority": "HIGH"
+            },
+            "SimSwapFraud": {
+                "Enabled": true,
+                "ThrottleWindowMinutes": 30,
+                "Priority": "CRITICAL"
+            }
+        }
+    },
+    "Serilog": {
+        "Using": [
+            "Serilog.Sinks.Async",
+            "Serilog.Sinks.Console",
+            "Serilog.Sinks.File"
+        ],
+        "MinimumLevel": {
+            "Default": "Information",
+            "Override": {
+                "Microsoft": "Warning",
+                "System": "Warning"
+            }
+        },
+        "Properties": {
+            "ServiceName": "Beepul.fraud-detection-ml"
+        },
+        "WriteTo": [
+            {
+                "Name": "Async",
+                "Args": {
+                    "configure": [
+                        {
+                            "Name": "Console",
+                            "Args": {
+                                "theme": "Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme::Code, Serilog.Sinks.Console",
+                                "outputTemplate": "{Timestamp:yyyy.MM.dd HH:mm:ss} [{Level:u3}] [{SourceContext}]: {Message:lj}{NewLine}{Exception}{NewLine}"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "Name": "Async",
+                "Args": {
+                    "configure": [
+                        {
+                            "Name": "File",
+                            "Args": {
+                                "path": "/root/logs/fraud-detection-ml/.log",
+                                "outputTemplate": "{Timestamp:HH:mm:ss} [{Level:u3}] [{SourceContext}]: {Message:lj}{NewLine}{Exception}{NewLine}",
+                                "rollingInterval": "Day",
+                                "retainedFileCountLimit": 60,
+                                "shared": true,
+                                "rollOnFileSizeLimit": true
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
