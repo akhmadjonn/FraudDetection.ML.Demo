@@ -5,6 +5,31 @@ VisualStudioVersion = 17.13.35913.81 d17.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Beepul.Afs.FraudDetection.ML.Api", "Beepul.Afs.FraudDetection.ML.Api\Beepul.Afs.FraudDetection.ML.Api.csproj", "{E15364F1-19FB-407F-8D8A-4601A84487A5}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		docker-compose.yml = docker-compose.yml
+		Dockerfile = Dockerfile
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deploy", "deploy", "{B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E}"
+	ProjectSection(SolutionItems) = preProject
+		deploy\prod\appsettings.Production.json = deploy\prod\appsettings.Production.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{C3D4E5F6-A7B8-4C5D-0E1F-2A3B4C5D6E7F}"
+	ProjectSection(SolutionItems) = preProject
+		ALERT_THROTTLING_GUIDE.md = ALERT_THROTTLING_GUIDE.md
+		API_DOCUMENTATION.md = API_DOCUMENTATION.md
+		FRAUD_DETECTION_RULES_EXPLAINED.md = FRAUD_DETECTION_RULES_EXPLAINED.md
+		FRAUD_PATTERNS_GAP_ANALYSIS.md = FRAUD_PATTERNS_GAP_ANALYSIS.md
+		HYBRID_ALERT_THROTTLING_GUIDE.md = HYBRID_ALERT_THROTTLING_GUIDE.md
+		LINUX_DEPLOYMENT.md = LINUX_DEPLOYMENT.md
+		MIGRATION_GUIDE.md = MIGRATION_GUIDE.md
+		README_WEBAPI.md = README_WEBAPI.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
