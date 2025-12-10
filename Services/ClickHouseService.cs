@@ -28,7 +28,7 @@ public class ClickHouseService
         await connection.OpenAsync();
 
         var query = @"
-            SELECT 
+            SELECT
                 Id, SessionId, GlobalId, GlobalDeviceId,
                 DeviceContext, Type, CreatedAt, ExpireAt,
                 DeviceKey, AppSetId, MetaData, ProfileId
@@ -42,6 +42,56 @@ public class ClickHouseService
             new { FromDate = fromDate, Limit = limit });
 
         return sessions.ToList();
+    }
+
+    /// <summary>
+    /// Memory-efficient method to get sessions WITHOUT loading the large DeviceContext field.
+    /// Use this for training data retrieval, then fetch DeviceContext individually as needed.
+    /// </summary>
+    public async Task<List<SessionRecord>> GetRecentSessionsLightAsync(
+        DateTime fromDate,
+        int limit = 10000,
+        int offset = 0)
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = @"
+            SELECT
+                Id, SessionId, GlobalId, GlobalDeviceId,
+                '' as DeviceContext, Type, CreatedAt, ExpireAt,
+                DeviceKey, AppSetId, MetaData, ProfileId
+            FROM Sessions
+            WHERE CreatedAt >= @FromDate
+            ORDER BY CreatedAt DESC
+            LIMIT @Limit OFFSET @Offset";
+
+        var sessions = await connection.QueryAsync<SessionRecord>(
+            query,
+            new { FromDate = fromDate, Limit = limit, Offset = offset });
+
+        return sessions.ToList();
+    }
+
+    /// <summary>
+    /// Get DeviceContext for a specific session by SessionId
+    /// </summary>
+    public async Task<string> GetSessionDeviceContextAsync(string sessionId)
+    {
+        using var connection = new ClickHouseConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = @"
+            SELECT DeviceContext
+            FROM Sessions
+            WHERE SessionId = @SessionId
+            LIMIT 1";
+
+        var deviceContext = await connection.QueryFirstOrDefaultAsync<string>(
+            query,
+            new { SessionId = sessionId });
+
+        return deviceContext ?? "{}";
     }
 
     // ==================== EVENT QUERIES ====================

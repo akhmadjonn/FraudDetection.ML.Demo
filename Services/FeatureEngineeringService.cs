@@ -20,8 +20,15 @@ public class FeatureEngineeringService
     {
         try
         {
+            // Load DeviceContext if not already loaded (for memory-efficient queries)
+            var deviceContextJson = session.DeviceContext;
+            if (string.IsNullOrWhiteSpace(deviceContextJson) || deviceContextJson == "{}")
+            {
+                deviceContextJson = await _clickHouse.GetSessionDeviceContextAsync(session.SessionId);
+            }
+
             // Parse DeviceContext JSON
-            var deviceContext = JsonSerializer.Deserialize<DeviceContext>(session.DeviceContext);
+            var deviceContext = JsonSerializer.Deserialize<DeviceContext>(deviceContextJson);
             if (deviceContext == null)
             {
                 _logger.LogWarning("Failed to parse DeviceContext for session {SessionId}", session.SessionId);

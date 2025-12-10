@@ -69,45 +69,84 @@ public class ModelTrainingJob : BackgroundService
             var isolationForest = scope.ServiceProvider.GetRequiredService<IsolationForestService>();
             var clustering = scope.ServiceProvider.GetRequiredService<ClusteringService>();
 
-            // Get sessions from last 7 days for training
+            // Get sessions from last 7 days for training using memory-efficient batch processing
             var fromDate = DateTime.UtcNow.AddDays(-7);
-            var sessions = await clickHouse.GetRecentSessionsAsync(fromDate, limit: 10000);
+            const int batchSize = 1000; // Process 1000 sessions at a time
+            const int maxSessions = 5000; // Reduced from 10000 to prevent memory issues
 
-            _logger.LogInformation("Retrieved {Count} sessions for training (from last 7 days)", sessions.Count);
+            _logger.LogInformation("Fetching sessions in batches of {BatchSize} (max {MaxSessions} total)",
+                batchSize, maxSessions);
 
-            if (sessions.Count < _minSessionsForTraining)
+            var allSessions = new List<SessionRecord>();
+            var offset = 0;
+
+            // Fetch sessions in batches to avoid memory overflow
+            while (allSessions.Count < maxSessions)
+            {
+                var batch = await clickHouse.GetRecentSessionsLightAsync(
+                    fromDate,
+                    limit: batchSize,
+                    offset: offset);
+
+                if (batch.Count == 0) break; // No more sessions
+
+                allSessions.AddRange(batch);
+                offset += batchSize;
+
+                _logger.LogInformation("Fetched batch {BatchNum}: {Count} sessions (total: {Total})",
+                    offset / batchSize, batch.Count, allSessions.Count);
+
+                if (batch.Count < batchSize) break; // Last batch
+            }
+
+            _logger.LogInformation("Retrieved {Count} sessions for training (from last 7 days)", allSessions.Count);
+
+            if (allSessions.Count < _minSessionsForTraining)
             {
                 _logger.LogWarning(
                     "Not enough data for training. Need at least {Min} sessions, got {Actual}. Skipping training.",
                     _minSessionsForTraining,
-                    sessions.Count);
+                    allSessions.Count);
                 return;
             }
 
-            // Extract features for all sessions
-            _logger.LogInformation("Extracting features from sessions...");
+            // Extract features in batches to control memory usage
+            _logger.LogInformation("Extracting features from sessions in batches...");
             var features = new List<FraudFeatures>();
             var failedCount = 0;
+            var processedCount = 0;
 
-            foreach (var session in sessions)
+            // Process features in smaller batches
+            const int featureBatchSize = 500;
+            for (int i = 0; i < allSessions.Count; i += featureBatchSize)
             {
-                try
+                var sessionBatch = allSessions.Skip(i).Take(featureBatchSize).ToList();
+
+                foreach (var session in sessionBatch)
                 {
-                    var feature = await featureService.ExtractFeaturesAsync(session);
-                    if (feature != null)
+                    try
                     {
-                        features.Add(feature);
+                        var feature = await featureService.ExtractFeaturesAsync(session);
+                        if (feature != null)
+                        {
+                            features.Add(feature);
+                        }
+                        else
+                        {
+                            failedCount++;
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
+                        _logger.LogWarning(ex, "Failed to extract features for session {SessionId}", session.SessionId);
                         failedCount++;
                     }
+
+                    processedCount++;
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to extract features for session {SessionId}", session.SessionId);
-                    failedCount++;
-                }
+
+                _logger.LogInformation("Feature extraction progress: {Processed}/{Total} sessions processed",
+                    processedCount, allSessions.Count);
             }
 
             _logger.LogInformation(
@@ -136,7 +175,7 @@ public class ModelTrainingJob : BackgroundService
             _logger.LogInformation("═══════════════════════════════════════");
             _logger.LogInformation("Model training completed successfully!");
             _logger.LogInformation("Duration: {Duration}", duration);
-            _logger.LogInformation("Sessions processed: {Count}", sessions.Count);
+            _logger.LogInformation("Sessions processed: {Count}", allSessions.Count);
             _logger.LogInformation("Features extracted: {Count}", features.Count);
             _logger.LogInformation("═══════════════════════════════════════");
         }
