@@ -10,6 +10,7 @@ public class ModelTrainingJob : BackgroundService
     private readonly ILogger<ModelTrainingJob> _logger;
     private readonly TimeSpan _trainingInterval;
     private readonly int _minSessionsForTraining;
+    private DateTime? _lastTrainingTime;
 
     public ModelTrainingJob(
         IServiceProvider serviceProvider,
@@ -20,6 +21,7 @@ public class ModelTrainingJob : BackgroundService
         _logger = logger;
         _trainingInterval = TimeSpan.FromHours(config.GetValue<int>("ML:TrainingIntervalHours", 6));
         _minSessionsForTraining = config.GetValue<int>("ML:MinSessionsForTraining", 1000);
+        _lastTrainingTime = null; // Will use 7 days on first run
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -69,10 +71,24 @@ public class ModelTrainingJob : BackgroundService
             var isolationForest = scope.ServiceProvider.GetRequiredService<IsolationForestService>();
             var clustering = scope.ServiceProvider.GetRequiredService<ClusteringService>();
 
-            // Get sessions from last 7 days for training using memory-efficient batch processing
-            var fromDate = DateTime.UtcNow.AddDays(-7);
+            // Determine the time range for this training run
+            // First run: use last 7 days
+            // Subsequent runs: use NEW data since last training
+            var fromDate = _lastTrainingTime ?? DateTime.UtcNow.AddDays(-7);
+            var currentTrainingTime = DateTime.UtcNow;
+
             const int batchSize = 1000; // Process 1000 sessions at a time
-            const int maxSessions = 5000; // Reduced from 10000 to prevent memory issues
+            const int maxSessions = 10000; // Maximum sessions to process per training
+
+            if (_lastTrainingTime.HasValue)
+            {
+                _logger.LogInformation("Fetching NEW sessions since last training at {LastTraining}",
+                    _lastTrainingTime.Value);
+            }
+            else
+            {
+                _logger.LogInformation("First training run - fetching sessions from last 7 days");
+            }
 
             _logger.LogInformation("Fetching sessions in batches of {BatchSize} (max {MaxSessions} total)",
                 batchSize, maxSessions);
@@ -99,14 +115,21 @@ public class ModelTrainingJob : BackgroundService
                 if (batch.Count < batchSize) break; // Last batch
             }
 
-            _logger.LogInformation("Retrieved {Count} sessions for training (from last 7 days)", allSessions.Count);
+            var timeRange = _lastTrainingTime.HasValue
+                ? $"since {_lastTrainingTime.Value}"
+                : "from last 7 days";
+
+            _logger.LogInformation("Retrieved {Count} sessions for training ({TimeRange})",
+                allSessions.Count, timeRange);
 
             if (allSessions.Count < _minSessionsForTraining)
             {
                 _logger.LogWarning(
-                    "Not enough data for training. Need at least {Min} sessions, got {Actual}. Skipping training.",
+                    "Not enough data for training. Need at least {Min} sessions, got {Actual}. " +
+                    "Skipping training until more data accumulates.",
                     _minSessionsForTraining,
                     allSessions.Count);
+                // Don't update _lastTrainingTime so we can include this data in the next run
                 return;
             }
 
@@ -156,7 +179,11 @@ public class ModelTrainingJob : BackgroundService
 
             if (features.Count < 100)
             {
-                _logger.LogWarning("Not enough valid features extracted. Need at least 100, got {Count}", features.Count);
+                _logger.LogWarning(
+                    "Not enough valid features extracted. Need at least 100, got {Count}. " +
+                    "Skipping training until more valid data is available.",
+                    features.Count);
+                // Don't update _lastTrainingTime so we can include this data in the next run
                 return;
             }
 
@@ -172,11 +199,15 @@ public class ModelTrainingJob : BackgroundService
 
             var duration = DateTime.UtcNow - startTime;
 
+            // Update last training time AFTER successful training
+            _lastTrainingTime = currentTrainingTime;
+
             _logger.LogInformation("═══════════════════════════════════════");
             _logger.LogInformation("Model training completed successfully!");
             _logger.LogInformation("Duration: {Duration}", duration);
             _logger.LogInformation("Sessions processed: {Count}", allSessions.Count);
             _logger.LogInformation("Features extracted: {Count}", features.Count);
+            _logger.LogInformation("Next training will use data after: {NextFromDate}", _lastTrainingTime.Value);
             _logger.LogInformation("═══════════════════════════════════════");
         }
         catch (Exception ex)
